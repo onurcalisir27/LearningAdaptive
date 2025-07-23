@@ -6,8 +6,8 @@
 
       <!--Declare Motor Configurations-->
       <!-- pinForward,pinReverse,pinEnable,pwm_frequency-->
-      <param name="left_motor">16,20,12,500</param>
-      <param name="right_motor">6,5,13,500</param>
+      <param name="left_motor">16,20,12,1700</param>
+      <param name="right_motor">6,5,13,1700</param>
   
       <!--Declare Encoder Configurations-->
       <!-- pinA,pinB,cpr,wheel_circumference-->
@@ -18,11 +18,11 @@
    
       <!--Declare PID Controller Configurations-->
       <!-- enable,kp,ki,kd,limit-->
-      <param name="left_controller">0,8.0,6.5,0.005,0.22</param>
-      <param name="right_controller">0,8.5,6.5,0.005,0.22</param>
+      <param name="left_controller">1,4.5,0.98,0.1,0.18</param>
+      <param name="right_controller">1,4.5,0.95,0.1,0.18</param>
 
-      <param name="min_velocity">0.3</param>
-      <param name="max_velocity">1.0</param>
+      <param name="min_velocity">0.38</param>
+      <param name="max_velocity">0.9</param>
 
     </hardware>
 
