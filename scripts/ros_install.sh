@@ -77,10 +77,16 @@ sudo make install
 
 # creating the workspace
 cd /$HOME
-git clone "$GITHUB_REPO"
-cd /$HOME/LearningAdaptive/src
+if [ -d "$HOME/LearningAdaptive" ]; then
+  echo "Directory $HOME/LearningAdaptive already exists. Skipping git clone."
+else
+  git clone "$GITHUB_REPO"
+fi
 
-#echo "cd "$ROS_DIR"" >> ~/.cshrc.nonlinear
+cd "$HOME/LearningAdaptive/src"
+git pull origin
+
+#echo "cd "$ROS`_DIR"" >> ~/.cshrc.nonlinear
 
 # install dependencies
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
