@@ -92,8 +92,6 @@ unzip master.zip
 cd pigpio-master
 make
 sudo make install
-cd /$HOME
-rm -rf /$HOME/tmp
 
 # creating the workspace
 cd /$HOME
