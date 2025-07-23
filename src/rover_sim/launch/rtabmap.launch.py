@@ -121,11 +121,4 @@ def generate_launch_description():
     ld.add_action(declare_localization)
 
     ld.add_action(delay_rtab)
-    
-    # ld.add_action(rtab_node)
-    # ld.add_action(slam_node)
-    # ld.add_action(localization_node)
-    # ld.add_action(rtabmap_viz_node)
-    # ld.add_action(rviz_node)
-
     return ld

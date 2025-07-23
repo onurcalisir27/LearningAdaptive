@@ -4,6 +4,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import TimerAction
 
 def generate_launch_description():
     
@@ -31,10 +32,26 @@ def generate_launch_description():
         executable='feedback_node',
         output='screen',
     )
+
+    delay_sensors = TimerAction(
+        period=12.0,
+        actions=[sensors_launch]
+    )
     
+    delay_camera = TimerAction(
+        period=15.0,
+        actions=[camera_launch]
+    )
+
+    delay_feedback = TimerAction(
+        period=20.0,
+        actions=[feedback_node]
+    )
+
+
     ld.add_action(robot_control_launch)
-    ld.add_action(sensors_launch)
-    ld.add_action(camera_launch)
-    ld.add_action(feedback_node)
+    ld.add_action(delay_sensors)
+    ld.add_action(delay_camera)
+    ld.add_action(delay_feedback)
     return ld
 

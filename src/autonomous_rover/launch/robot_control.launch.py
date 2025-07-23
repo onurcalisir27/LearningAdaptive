@@ -51,12 +51,12 @@ def generate_launch_description():
     )
 
     delay_joint_state_broadcaster = TimerAction(
-        period=2.0,
+        period=3.0,
         actions=[joint_state_node]
     )
 
     delay_controller_spawner = TimerAction(
-        period=5.0,
+        period=7.0,
         actions=[controller_spawner]
     )
 
