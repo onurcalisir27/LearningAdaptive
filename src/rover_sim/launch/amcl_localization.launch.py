@@ -15,7 +15,7 @@ def generate_launch_description():
     nav2_dir = get_package_share_directory('nav2_bringup')
     amcl_config = os.path.join(pkg_dir, 'config', 'amcl.yaml')
     
-    map_config = os.path.join(pkg_dir, 'maps', 'test2_map.yaml')
+    map_config = os.path.join(pkg_dir, 'maps', 'lab_map.yaml')
     rviz_config = os.path.join(pkg_dir, 'rviz', 'localization.rviz')
     sim_time = DeclareLaunchArgument('use_sim_time', default_value='True', description='Enable sim time use')
 
