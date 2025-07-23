@@ -78,7 +78,7 @@ def generate_launch_description():
                 Node(
                     package='controller_manager',
                     executable='spawner',
-                    arguments=['diff_drive_controller', '--controller-manager', '/controller_manager'],
+                    arguments=['rover_control', '--controller-manager', '/controller_manager'],
                     output='screen'
                 )
             ]

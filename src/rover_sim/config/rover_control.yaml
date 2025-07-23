@@ -3,28 +3,30 @@ controller_manager:
     update_rate: 30
     use_sim_time: true
 
-    diff_drive_controller:
+    rover_control:
       type: diff_drive_controller/DiffDriveController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
-diff_drive_controller:
+rover_control:
   ros__parameters:
     left_wheel_names: ["front_left_wheel_joint", "back_left_wheel_joint"]
     right_wheel_names: ["front_right_wheel_joint", "back_right_wheel_joint"]
     
     wheel_separation: 0.24
+    wheels_per_side: 2
     wheel_radius: 0.0325
     
     odom_frame_id: odom
     base_frame_id: base_footprint
-    pose_covariance_diagonal: [0.01, 0.01, 0.001, 0.001, 0.001, 0.1]
-    twist_covariance_diagonal: [0.01, 0.001, 0.001, 0.001, 0.001, 0.1]
+
+    pose_covariance_diagonal: [0.025, 0.025, 0.001, 0.001, 0.001, 0.1]
+    twist_covariance_diagonal: [0.025, 0.025, 0.001, 0.001, 0.001, 0.1]
     
     position_feedback: false
     open_loop: false
-    enable_odom_tf: true  
+    enable_odom_tf: false  
 
     use_stamped_vel: false
 

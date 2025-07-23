@@ -64,16 +64,36 @@ sudo apt install -y python3-colcon-common-extensions
 
 source /opt/ros/humble/setup.bash
 
-echo "#source /opt/ros/humble/setup.bash" >> ~/.cshrc.nonlinear
+USERSHELL=$(basename "$SHELL")
 
-# installing pigpio (optional-ish)
-mkdir ~/tmp
-cd ~/tmp
+case "$USERSHELL" in
+  bash)
+    echo "source /opt/ros/humble/setup.bash" >> /$HOME/.bashrc
+    echo "export ROS_DOMAIN_ID=42" >> /$HOME/.bashrc
+    ;;
+  zsh)
+    echo "source /opt/ros/humble/setup.zsh" >> /$HOME/.zshrc
+    echo "export ROS_DOMAIN_ID=42" >> /$HOME/.zshrc
+    ;;
+  csh|tcsh)
+    echo "#source /opt/ros/humble/setup.bash" >> /$HOME/.cshrc.nonlinear
+    echo "#export ROS_DOMAIN_ID=42" >> /$HOME/.cshrc.nonlinear
+    ;;
+  *)
+    echo "Couldn't find shell"
+    ;;
+esac
+
+# installing pigpio
+mkdir -p /$HOME/tmp
+cd /$HOME/tmp
 wget https://github.com/joan2937/pigpio/archive/master.zip
 unzip master.zip
 cd pigpio-master
 make
 sudo make install
+cd /$HOME
+rm -rf /$HOME/tmp
 
 # creating the workspace
 cd /$HOME
@@ -86,15 +106,13 @@ fi
 cd "$HOME/LearningAdaptive/src"
 git pull origin
 
-#echo "cd "$ROS`_DIR"" >> ~/.cshrc.nonlinear
-
 # install dependencies
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
     sudo rosdep init
 fi
 rosdep update
 
-cd LearningAdaptive
+cd /$HOME/LearningAdaptive
 rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
 
 # Make an initial build to make sure nothing went wrong
