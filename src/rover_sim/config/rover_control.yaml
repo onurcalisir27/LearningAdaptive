@@ -21,8 +21,8 @@ rover_control:
     odom_frame_id: odom
     base_frame_id: base_footprint
 
-    pose_covariance_diagonal: [0.025, 0.025, 0.001, 0.001, 0.001, 0.1]
-    twist_covariance_diagonal: [0.025, 0.025, 0.001, 0.001, 0.001, 0.1]
+    pose_covariance_diagonal: [0.005, 0.005, 0.001, 0.001, 0.001, 0.005]
+    twist_covariance_diagonal: [0.005, 0.005, 0.001, 0.001, 0.001, 0.005]
     
     position_feedback: false
     open_loop: false

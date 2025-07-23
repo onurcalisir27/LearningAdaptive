@@ -7,7 +7,7 @@ slam_toolbox:
     ceres_trust_strategy: LEVENBERG_MARQUARDT
     ceres_dogleg_type: TRADITIONAL_DOGLEG
     ceres_loss_function: None
-    ceres_num_threads: 8 
+    ceres_num_threads: 4
 
     # ROS Parameters
     odom_frame: odom
@@ -22,7 +22,7 @@ slam_toolbox:
     map_update_interval: 5.0
     resolution: 0.05
     min_laser_range: 0.15
-    max_laser_range: 10.0
+    max_laser_range: 5.0
     minimum_time_interval: 0.1
     transform_timeout: 0.2
     tf_buffer_duration: 30.0
@@ -32,10 +32,10 @@ slam_toolbox:
     # SCAN MATCHING
     use_scan_matching: true
     use_scan_barycenter: true
-    minimum_travel_distance: 0.5
-    minimum_travel_heading: 0.5
-    scan_buffer_size: 10
-    scan_buffer_maximum_scan_distance: 10.0
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+    scan_buffer_size: 30
+    scan_buffer_maximum_scan_distance: 5.0
 
     # LOOP CLOSURE
     link_match_minimum_response_fine: 0.1
