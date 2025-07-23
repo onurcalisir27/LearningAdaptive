@@ -49,8 +49,8 @@ diff_drive_controller:
         max_velocity: 4.0
         min_velocity: -4.0
         has_acceleration_limits: true
-        max_acceleration: 3.0
-        max_deceleration: -3.0   
+        max_acceleration: 2.0
+        max_deceleration: -2.0   
 
 # Joint state broadcaster
 joint_state_broadcaster:

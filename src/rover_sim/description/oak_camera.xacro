@@ -34,7 +34,6 @@
     </inertial>
   </link>
 
-  <!-- OAK-D Lite Camera Base -->
   <joint name="camera_joint" type="fixed">
     <parent link="mount_link"/>
     <child link="camera_link"/>
@@ -126,41 +125,45 @@
   <joint name="camera_imu_joint" type="fixed">
     <parent link="camera_link"/>
     <child link="oak_imu_frame"/>
-    <!-- IMU is typically at the center of the device -->
     <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
   </joint>
 
   <link name="oak_imu_frame"/>
-    
-  <gazebo reference="oak_rgb_camera_optical_frame">
-    <sensor type="depth" name="oak_depth_camera">
-      <update_rate>30</update_rate>
+
+  <gazebo reference="camera_link">
+    <sensor name="rgbd_camera" type="rgbd_camera">
       <camera>
-        <horizontal_fov>1.047198</horizontal_fov>
+        <horizontal_fov>1.204</horizontal_fov>
         <image>
           <width>640</width>
           <height>480</height>
           <format>R8G8B8</format>
         </image>
+        <depth_camera>
+          <image>
+          <width>640</width>
+          <height>480</height>
+          <format>L_INT16</format>
+          </image>
+        </depth_camera>
         <clip>
-          <near>0.05</near>
-          <far>3</far>
+          <near>0.08</near>
+          <far>8.0</far>
         </clip>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.005</stddev>
+        </noise>
+        <optical_frame_id>oak_rgb_camera_optical_frame</optical_frame_id>
       </camera>
-      <plugin name="oak_depth_controller" filename="libgazebo_ros_camera.so">
-        <ros>
-          <namespace></namespace>
-          <remapping>~/image_raw:=/oak/rgb/image_raw</remapping>
-          <remapping>~/depth/image_raw:=/oak/depth/image_raw</remapping>
-          <remapping>~/depth/camera_info:=/oak/depth/camera_info</remapping>
-          <remapping>~/camera_info:=/oak/rgb/camera_info</remapping>
-          <remapping>~/points:=/oak/depth/points</remapping>
-        </ros>
-        <camera_name>oak_camera</camera_name>
-        <frame_name>oak_rgb_camera_optical_frame</frame_name>
-        <hack_baseline>0.075</hack_baseline>
-      </plugin>
+      <visualize>true</visualize>
+      <update_rate>20</update_rate>
+      <always_on>1</always_on>
+      <topic>camera</topic>
+      <gz_frame_id>camera_link</gz_frame_id>
     </sensor>
   </gazebo>
+
 
 </robot>

@@ -2,6 +2,9 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rover_sim">
 
   <xacro:include filename="$(find rover_sim)/description/base_robot.xacro"/>
+  
   <xacro:include filename="$(find rover_sim)/description/lidar.xacro"/>
+  <xacro:include filename="$(find rover_sim)/description/oak_camera.xacro"/>
+  <xacro:include filename="$(find rover_sim)/description/imu.xacro"/>
    
 </robot>

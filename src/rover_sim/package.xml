@@ -14,9 +14,11 @@
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
   <depend>rclcpp_lifecycle</depend>
+  
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
+
   <depend>camera_info_manager</depend>
   <depend>depthai</depend>
   <depend>depthai_bridge</depend>
@@ -29,6 +31,18 @@
   <depend>ros_gz_sim</depend>
   <depend>ros_gz_sim_demos</depend>
   <depend>gz_ros2_control</depend>
+
+  <depend>navigation2</depend>
+  <depend>nav2_bringup</depend>
+
+  <depend>slam_toolbox</depend>
+  <depend>rtabmap_ros</depend>
+  <depend>rtabmap_sync</depend>
+  <depend>rtabmap_slam</depend>
+  <depend>rtabmap_viz</depend>
+  
+  <depend>robot_localization</depend>
+  <depend>amcl</depend>
   
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher</exec_depend>

@@ -9,13 +9,11 @@ from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    # Paths to files
     pkg_share = get_package_share_directory('rover_sim')
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
     world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
     ekf_file = os.path.join(pkg_share, 'config', 'ekf.yaml')
                                    
-    # URDF Parsing
     robot_description = Command(['xacro ', urdf_file])
     params = {
         'robot_description': ParameterValue(
@@ -26,7 +24,6 @@ def generate_launch_description():
     }
 
     return LaunchDescription([
-        # Robot State Pub
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -87,22 +84,6 @@ def generate_launch_description():
             ]
         ),
 
-        # # Velocity Command Adjuster
-        # Node(
-        #     package='twist_stamper',
-        #     executable='twist_stamper',
-        #     name='twist_stamper',
-        #     output='screen',
-        #     remappings=[
-        #         ('cmd_vel_in', '/teleop_raw'),
-        #         ('cmd_vel_out', '/diff_drive_controller/cmd_vel')
-        #     ],
-        #     parameters=[{
-        #         'frame_id': 'base_link',
-        #         'use_sim_time': True
-        #     }]
-        # ),
-
         # ROS-Gazebo Topic Sharing
         Node(
             package='ros_gz_bridge',
@@ -129,17 +110,12 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # # Extended Kalman Filter
-        # Node(
-        #     package='robot_localization',
-        #     executable='ekf_node',
-        #     name='ekf_filter_node',
-        #     output='screen',
-        #     parameters=[ekf_file,
-        #                {'use_sim_time': True}],
-        #     remappings=[
-        #         ('/odometry/filtered', '/odometry/filtered')
-        #     ]
-        # )
-    
+        Node(
+            package='robot_localization',
+            executable='ekf_node',
+            name='ekf_filter_node',
+            output='screen',
+            parameters=[ekf_file,
+                       {'use_sim_time': True}],
+        )
     ])

@@ -3,6 +3,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" >
   
   <xacro:include filename="$(find rover_sim)/description/ros2_control.xacro"/>
+  
   <!-- Base footprint - ground reference -->
   <link name="base_footprint"/>
 

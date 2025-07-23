@@ -17,8 +17,6 @@ def generate_launch_description():
     
     map_config = os.path.join(pkg_dir, 'maps', 'test2_map.yaml')
     rviz_config = os.path.join(pkg_dir, 'rviz', 'localization.rviz')
-    
-    # Declare launch parameters
     sim_time = DeclareLaunchArgument('use_sim_time', default_value='True', description='Enable sim time use')
 
     # Generate launch
