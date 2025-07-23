@@ -31,6 +31,7 @@ sudo apt-get install -y \
     openssh-client \
     lsb-release \
     gnupg2 \
+    libeigen3-dev \
 
 # verify environment
 if ! locale | grep -q "UTF-8"; then
@@ -57,7 +58,7 @@ sudo dpkg -i /tmp/ros2-apt-source.deb
 sudo apt update
 sudo apt upgrade -y
 
-sudo apt install ros-humble-desktop
+sudo apt install -y ros-humble-desktop
 sudo apt install -y ros-dev-tools
 sudo apt install -y python3-rosdep
 sudo apt install -y python3-colcon-common-extensions
