@@ -9,10 +9,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY description launch rviz config worlds
+  DIRECTORY description launch rviz config maps worlds
   DESTINATION share/${PROJECT_NAME}
   USE_SOURCE_PERMISSIONS
 )
-
-
 ament_package()
