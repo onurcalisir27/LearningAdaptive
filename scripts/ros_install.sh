@@ -98,12 +98,12 @@ if [ "$(basename "$PARENT_DIR")" = "LearningAdaptive" ]; then
     echo "\"LearningAdaptive\" directory does exist."
 else
     cd "$HOME"
-    [ ! -d "$HOME/LearningAdaptive" ] && git clone https://github.com/onurcalisir27/LearningAdaptive.git
-    git pull origin
+    [ ! -d "$HOME/LearningAdaptive" ] && git clone "$GITHUB_REPO"
 fi
 
 REPO_PATH=$(find ~ -type d -name "LearningAdaptive" -print -quit)
 cd "$REPO_PATH/src"
+git pull origin
 
 # install dependencies
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
