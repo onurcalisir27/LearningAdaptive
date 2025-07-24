@@ -15,13 +15,23 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
-  
+       
+  <depend>nav2_common</depend>
+  <depend>nav2_core</depend>
+  <depend>nav2_util</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav2_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>tf2</depend>
+  <exec_depend>nav2_bringup</exec_depend>
+ 
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
   
   <exec_depend>navigation2</exec_depend>
-  <exec_depend>nav2_bringup</exec_depend>
 
   <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>rtabmap_ros</exec_depend>
