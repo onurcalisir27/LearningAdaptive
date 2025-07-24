@@ -96,15 +96,25 @@ make
 sudo make install
 
 # creating the workspace
-cd /$HOME
-if [ -d "$HOME/LearningAdaptive" ]; then
-  echo "Directory $HOME/LearningAdaptive already exists. Skipping git clone."
+cd "$(dirname "$0")"
+SCRIPT_DIR="$(pwd)"
+
+# Go to the parent directory
+cd ..
+PARENT_DIR="$(pwd)"
+
+# Check if the parent directory name matches "LearningAdaptive"
+if [ "$(basename "$PARENT_DIR")" = "LearningAdaptive" ]; then
+    echo "\"LearningAdaptive\" directory does exist."
 else
-  git clone "$GITHUB_REPO"
+    echo "Directory is not named LearningAdaptive. You may want to clone your repo here."
+    cd "$HOME"
+    [ ! -d "$HOME/LearningAdaptive" ] && git clone "https://github.com/onurcalisir27/LearningAdaptive.git"
+    git pull origin
 fi
 
-cd "$HOME/LearningAdaptive/src"
-git pull origin
+REPO_PATH=$(find ~ -type d -name "LearningAdaptive" -print -quit)
+cd "$REPO_PATH/src"
 
 # install dependencies
 if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
@@ -112,11 +122,10 @@ if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
 fi
 rosdep update
 
-cd /$HOME/LearningAdaptive
+cd /"$REPO_PATH"
 rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
 
 # Make an initial build to make sure nothing went wrong
-cd /$HOME/LearningAdaptive
 source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 
