@@ -1,0 +1,10 @@
+<class_libraries>
+    <library path="adaptive_controller">
+        <class type="adaptive_controller::AdaptiveController" base_class_type="nav2_core::Controller">
+            <description>
+               Nav2 Controller Server Plugin for Adaptive Controllers
+            </description>
+        </class>
+    </library>
+</class_libraries>
+
