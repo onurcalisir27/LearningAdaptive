@@ -78,27 +78,17 @@ case "$USERSHELL" in
     ;;
   csh|tcsh)
     echo "#source /opt/ros/humble/setup.bash" >> /$HOME/.cshrc.nonlinear
-    echo "#export ROS_DOMAIN_ID=42" >> /$HOME/.cshrc.nonlinear
+    echo "#export ROS_DOMAIN_ID=41" >> /$HOME/.cshrc.nonlinear
     ;;
   *)
     echo "Couldn't find shell"
     ;;
 esac
 
-# installing pigpio
-mkdir -p /$HOME/tmp
-cd /$HOME/tmp
-sudo apt install -y python-setuptools python3-setuptools
-wget https://github.com/joan2937/pigpio/archive/master.zip
-unzip master.zip
-cd pigpio-master
-make
-sudo make install
-
 # creating the workspace
 cd "$(dirname "$0")"
 SCRIPT_DIR="$(pwd)"
-
+cd ..
 # Go to the parent directory
 cd ..
 PARENT_DIR="$(pwd)"
@@ -107,9 +97,8 @@ PARENT_DIR="$(pwd)"
 if [ "$(basename "$PARENT_DIR")" = "LearningAdaptive" ]; then
     echo "\"LearningAdaptive\" directory does exist."
 else
-    echo "Directory is not named LearningAdaptive. You may want to clone your repo here."
     cd "$HOME"
-    [ ! -d "$HOME/LearningAdaptive" ] && git clone "https://github.com/onurcalisir27/LearningAdaptive.git"
+    [ ! -d "$HOME/LearningAdaptive" ] && git clone https://github.com/onurcalisir27/LearningAdaptive.git
     git pull origin
 fi
 
