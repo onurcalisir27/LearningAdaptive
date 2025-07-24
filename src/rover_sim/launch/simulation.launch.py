@@ -11,7 +11,7 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     pkg_share = get_package_share_directory('rover_sim')
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
-    world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
+    world_file = os.path.join(pkg_share, 'worlds', 'lab2office.sdf')
     ekf_file = os.path.join(pkg_share, 'config', 'ekf.yaml')
                                    
     robot_description = Command(['xacro ', urdf_file])
@@ -42,8 +42,9 @@ def generate_launch_description():
                 ])
             ]),
             launch_arguments={
-                'gz_args': f'-r -v1 {world_file}',
-                'on_exit_shutdown': 'true'
+                'gz_args': f'-r -s -v1 {world_file}',
+                'on_exit_shutdown': 'true',
+                'gui': 'false'
             }.items()
         ),
 
@@ -79,7 +80,10 @@ def generate_launch_description():
                     package='controller_manager',
                     executable='spawner',
                     arguments=['rover_control', '--controller-manager', '/controller_manager'],
-                    output='screen'
+                    output='screen',
+                    remappings=[
+                            ('/rover_control/cmd_vel_out', '/cmd_vel'),  
+                    ]
                 )
             ]
         ),
