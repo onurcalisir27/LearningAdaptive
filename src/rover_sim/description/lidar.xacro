@@ -69,7 +69,7 @@
 
    <gazebo reference="lidar_link">
         <sensor name="gpu_lidar" type="gpu_lidar">
-        <update_rate>20</update_rate>
+        <update_rate>10</update_rate>
         <topic>scan</topic>
         <gz_frame_id>lidar_link</gz_frame_id>
         <lidar>

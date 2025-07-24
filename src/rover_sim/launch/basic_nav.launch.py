@@ -16,7 +16,7 @@ def generate_launch_description():
 
     amcl_config = os.path.join(robot_dir, 'config', 'amcl.yaml')
     nav_config = os.path.join(robot_dir, 'config', 'navigation.yaml')
-    map_config = os.path.join(robot_dir, 'maps', 'lab_map.yaml')
+    map_config = os.path.join(robot_dir, 'maps', 'better_map.yaml')
     rviz_config = os.path.join(robot_dir, 'rviz', 'navigation.rviz')
     
     # Launch parameters

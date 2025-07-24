@@ -91,8 +91,6 @@ def generate_launch_description():
             arguments=[
                 # Clock sync
                 "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-                # Odometry from Simulation
-                "/model/rover_sim/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry",
                 # RGB image
                 "/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
                 # Depth image  
