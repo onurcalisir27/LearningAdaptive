@@ -33,17 +33,6 @@ apt-get install -y \
     gnupg2 \
     libeigen3-dev \
 
-# verify environment
-if ! locale | grep -q "UTF-8"; then
-	apt update
-	apt install -y locales
-	locale-gen en_US en_US.UTF-8
-	update-locale LC_ALL
-	export LANG=en_US.UTF-8
-fi
-
-locale | grep -q "UTF-8" >> /dev/null
-
 # installing ROS
 apt install -y software-properties-common
 add-apt-repository universe
