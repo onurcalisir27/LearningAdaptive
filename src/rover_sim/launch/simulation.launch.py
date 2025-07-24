@@ -88,6 +88,21 @@ def generate_launch_description():
             ]
         ),
 
+        Node(
+            package='twist_stamper',
+            executable='twist_stamper',
+            name='twist_stamper',
+            output='screen',
+            remappings=[
+                ('cmd_vel_in', '/cmd_vel'),
+                ('cmd_vel_out', 'rover_control/cmd_vel')
+            ],
+            parameters=[{
+                'frame_id': 'base_footprint',
+                'use_sim_time': True
+            }]
+        ),
+        
         # ROS-Gazebo Topic Sharing
         Node(
             package='ros_gz_bridge',

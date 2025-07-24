@@ -50,6 +50,21 @@ def generate_launch_description():
         arguments=['rover_control', '--controller-manager', '/controller_manager'],
     )
 
+    twist_stamper = Node(
+        package='twist_stamper',
+        executable='twist_stamper',
+        name='twist_stamper',
+        output='screen',
+        remappings=[
+            ('cmd_vel_in', '/cmd_vel'),
+            ('cmd_vel_out', 'rover_control/cmd_vel')
+        ],
+        parameters=[{
+            'frame_id': 'base_footprint',
+            'use_sim_time': False
+        }]
+    )
+
     delay_joint_state_broadcaster = TimerAction(
         period=3.0,
         actions=[joint_state_node]
@@ -59,10 +74,16 @@ def generate_launch_description():
         period=7.0,
         actions=[controller_spawner]
     )
+    
+    delay_twist_stamper = TimerAction(
+        period=10.0,
+        actions=[twist_stamper]
+    )
 
     ld.add_action(robot_node)
     ld.add_action(control_node)
     ld.add_action(delay_joint_state_broadcaster)
     ld.add_action(delay_controller_spawner)
+    ld.add_action(delay_twist_stamper)
     return ld
 
