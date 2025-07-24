@@ -66,7 +66,8 @@
         </inertial>
     </link>
 
-
+pkill -f nav2
+pkill -f gazebo
    <gazebo reference="lidar_link">
         <sensor name="gpu_lidar" type="gpu_lidar">
         <update_rate>10</update_rate>
