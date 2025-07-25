@@ -102,7 +102,7 @@ def generate_launch_description():
         description='Whether to update ROS time on each message.')
 
     stereo_node = launch_ros.actions.Node(
-            package='autonomous_rover', executable='camera_driver_node',
+            package='rover_hardware', executable='camera_driver_node',
             output='screen',
             parameters=[{'lrcheck':                 lrcheck},
                         {'rectify':                 rectify},

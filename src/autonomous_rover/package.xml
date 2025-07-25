@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>autonomous_rover</name>
-  <version>0.0.5</version>
-  <description>Learning Adaptive Control for Autonomous Navigation Research Project</description>
-  <maintainer email="onur.calisir@columbia.edu">onurcalisir</maintainer>
+  <name>rover_hardware</name>
+  <version>1.0.0</version>
+  <description>Hardware Level Control for Learning Adaptive Control for Autonomous Navigation Research Project</description>
+  <maintainer email="onur.calisir@columbia.edu">Onur Calisir</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

@@ -9,7 +9,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     
     ld = LaunchDescription()
-    pkg_dir = get_package_share_directory('autonomous_rover')
+    pkg_dir = get_package_share_directory('rover_hardware')
     control_params = os.path.join(pkg_dir,'config', 'rover_control.yaml')
     urdf_file = os.path.join(pkg_dir, 'description', 'robot.urdf.xacro')
 

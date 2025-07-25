@@ -9,7 +9,7 @@ from launch.actions import TimerAction
 def generate_launch_description():
     
     ld = LaunchDescription()
-    pkg_dir = get_package_share_directory('autonomous_rover')
+    pkg_dir = get_package_share_directory('rover_hardware')
     robot_control_launch_path = os.path.join(pkg_dir, 'launch', 'robot_control.launch.py')
     sensors_launch_path = os.path.join(pkg_dir, 'launch', 'sensors.launch.py')
     camera_launch_path = os.path.join(pkg_dir, 'launch', 'camera.launch.py')
@@ -28,7 +28,7 @@ def generate_launch_description():
     )
 
     feedback_node = Node(
-        package='autonomous_rover',
+        package='rover_hardware',
         executable='feedback_node',
         output='screen',
     )

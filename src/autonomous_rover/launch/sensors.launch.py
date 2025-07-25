@@ -9,7 +9,7 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    pkg_dir = get_package_share_directory('autonomous_rover')
+    pkg_dir = get_package_share_directory('rover_hardware')
     imu_dir = get_package_share_directory('ros2_mpu6050')
     ekf_params = os.path.join(pkg_dir, 'config', 'ekf.yaml')
     imu_launch_path = os.path.join(imu_dir, 'launch', 'ros2_mpu6050.launch.py')
@@ -20,7 +20,7 @@ def generate_launch_description():
     )
 
     imu_filter = Node(
-        package='autonomous_rover',
+        package='rover_hardware',
         executable='imu_filter_node',
         name='imu_filter_node',
         output='screen'

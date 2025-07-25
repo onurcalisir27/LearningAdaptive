@@ -2,10 +2,8 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" >
 
-  <!-- ROS2 Control Plugins-->
-  <xacro:include filename="$(find autonomous_rover)/description/ros2_control.xacro"/> 
+  <xacro:include filename="$(find rover_hardware)/description/ros2_control.xacro"/> 
 
-  <!-- Base footprint - ground reference -->
    <link name="base_footprint"/>
 
   <joint name="base_joint" type="fixed">
@@ -40,7 +38,6 @@
     </inertial>
   </link>
 
-  <!-- Front Left Wheel -->
   <joint name="front_left_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="front_left_wheel"/>
@@ -74,7 +71,6 @@
     </inertial>
   </link>
 
-  <!-- Front Right Wheel -->
   <joint name="front_right_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="front_right_wheel"/>
@@ -108,7 +104,6 @@
     </inertial>
   </link>
 
-  <!-- Back Left Wheel -->
   <joint name="back_left_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="back_left_wheel"/>
@@ -142,7 +137,6 @@
     </inertial>
   </link>
 
-  <!-- Back Right Wheel -->
   <joint name="back_right_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="back_right_wheel"/>

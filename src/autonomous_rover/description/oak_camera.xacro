@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <!-- Camera Mount -->
   <joint name="mount_joint" type="fixed">
     <parent link="base_link"/>
     <child link="mount_link"/>
@@ -34,7 +33,6 @@
     </inertial>
   </link>
 
-  <!-- OAK-D Lite Camera Base -->
   <joint name="camera_joint" type="fixed">
     <parent link="mount_link"/>
     <child link="camera_link"/>
@@ -45,7 +43,6 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <!-- OAK-D Lite Dimensions -->
         <box size="0.0175 0.091 0.028"/>
       </geometry>
       <material name="camera_material">
@@ -68,7 +65,6 @@
     </inertial>
   </link>
 
-  <!-- RGB Camera (Center) -->
   <joint name="camera_rgb_joint" type="fixed">
     <parent link="camera_link"/>
     <child link="oak_rgb_camera_frame"/>
@@ -80,17 +76,14 @@
   <joint name="camera_rgb_optical_joint" type="fixed">
     <parent link="oak_rgb_camera_frame"/>
     <child link="oak_rgb_camera_optical_frame"/>
-    <!-- Rotate to optical frame convention (z forward, x right, y down) -->
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
 
   <link name="oak_rgb_camera_optical_frame"/>
 
-  <!-- Left Camera -->
   <joint name="camera_left_joint" type="fixed">
     <parent link="camera_link"/>
     <child link="oak_left_camera_frame"/>
-    <!-- 37.5mm to the left from center -->
     <origin xyz="0.00875 0.0375 0.0" rpy="0 0 0"/>
   </joint>
 
@@ -104,11 +97,9 @@
 
   <link name="oak_left_camera_optical_frame"/>
 
-  <!-- Right Camera -->
   <joint name="camera_right_joint" type="fixed">
     <parent link="camera_link"/>
     <child link="oak_right_camera_frame"/>
-    <!-- 37.5mm to the right from center -->
     <origin xyz="0.00875 -0.0375 0.0" rpy="0 0 0"/>
   </joint>
 
@@ -122,7 +113,6 @@
 
   <link name="oak_right_camera_optical_frame"/>
 
-  <!-- IMU -->
   <joint name="camera_imu_joint" type="fixed">
     <parent link="camera_link"/>
     <child link="oak_imu_frame"/>

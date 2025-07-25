@@ -13,7 +13,6 @@ class EncoderCalibration : public rclcpp::Node {
 public:
   EncoderCalibration() : Node("encoder_calibration_node") {
 
-    // Initialize 
     wheel_radius_ = 0.0325;
     positions_.resize(4, 0.0f);
     velocities_.resize(4, 0.0f);
@@ -25,7 +24,6 @@ public:
       {"back_right_wheel_joint", 3},
     };
 
-    // Subscribers
     encoder_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
       "/joint_states", 10, std::bind(&EncoderCalibration::encoder_callback, this, std::placeholders::_1));
     
@@ -45,14 +43,11 @@ private:
 
     for (size_t i=0; i < msg->name.size();++i){
 
-      // Find the index of the encoder from the map
       auto it = umap_.find(msg->name[i]);
 
       if (it != umap_.end()){
-        // Append the encoder readings to the according joint
         size_t encoder_index = it->second;
 
-        // Convert message content to meters
         positions_[encoder_index] = msg->position[i] * wheel_radius_;
         velocities_[encoder_index] = msg->velocity[i] * wheel_radius_;
 
@@ -90,12 +85,9 @@ private:
     RCLCPP_INFO(this->get_logger(), "Position: %f m", positions_[3]);
     RCLCPP_INFO(this->get_logger(), "Velocities: %f m/s", velocities_[3]);
   }
-
-  // Subscribers
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr encoder_sub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
   
-  // State variables
   std::unordered_map<std::string, size_t> umap_;
   std::vector<float> positions_;
   std::vector<float> velocities_;

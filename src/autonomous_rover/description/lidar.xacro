@@ -65,37 +65,4 @@
                     ixy="0" ixz="0" iyz="0"/>
         </inertial>
     </link>
-
-    <!-- Gazebo LiDAR Sensor-->
-   <!-- <gazebo reference="lidar_link">
-        <sensor name="gpu_lidar" type="gpu_lidar">
-        <update_rate>10</update_rate>
-        <topic>scan</topic>
-        <gz_frame_id>lidar_link</gz_frame_id>
-        <lidar>
-            <scan>
-            <horizontal>
-                <samples>720</samples>
-                <resolution>1</resolution>
-                <min_angle>-3.14156</min_angle>
-                <max_angle>3.14156</max_angle>
-            </horizontal>
-            </scan>
-            <range>
-            <min>0.15</min>
-            <max>10.0</max>
-            <resolution>0.01</resolution>
-            </range>
-            <noise>
-                <type>gaussian</type>
-                <mean>0.0</mean>
-                <stddev>0.01</stddev>
-            </noise>
-            <frame_id>lidar_link</frame_id>
-        </lidar>
-        <always_on>1</always_on>
-        <visualize>true</visualize>
-        </sensor>
-    </gazebo> -->
-
 </robot>
