@@ -106,7 +106,7 @@ namespace adaptive_controller
             auto plan = transformGlobalPlan(pose);
 
             // controller_->computeControl(*)
-
+            
             geometry_msgs::msg::TwistStamped cmd_vel;
             cmd_vel.header.frame_id = pose.header.frame_id;
             cmd_vel.header.stamp = clock_->now();

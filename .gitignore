@@ -8,4 +8,6 @@ src/autonomous_rover/.vscode
 src/rover_control/.vscode
 src/rover_sim/.vscode
 
+.obsidian/
+
 
