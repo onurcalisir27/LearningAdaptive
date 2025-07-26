@@ -74,7 +74,7 @@ namespace adaptive_controller
             plugin_name_.c_str(),plugin_name_.c_str());
         global_pub_->on_activate();
 
-        // controller_->start(*)
+        // controller_->activate(*)
 
     }
 
@@ -103,9 +103,11 @@ namespace adaptive_controller
         nav2_core::GoalChecker * goal_checker) {
 
             // Convert the plan from the global planner's frame into usable robot coordinate frame
-            auto plan = transformGlobalPlan(pose);
+            auto reference_plan = transformGlobalPlan(pose);
 
             // controller_->computeControl(*)
+            
+
             
             geometry_msgs::msg::TwistStamped cmd_vel;
             cmd_vel.header.frame_id = pose.header.frame_id;
@@ -155,6 +157,7 @@ namespace adaptive_controller
     nav_msgs::msg::Path AdaptiveController::transformGlobalPlan(
     const geometry_msgs::msg::PoseStamped & pose)
     {
+
     if (global_plan_.poses.empty()) {
         throw nav2_core::PlannerException("Received plan with zero length");
     }
@@ -170,6 +173,7 @@ namespace adaptive_controller
 
     // We'll discard points on the plan that are outside the local costmap
     nav2_costmap_2d::Costmap2D * costmap = costmap_ros_->getCostmap();
+
     double dist_threshold = std::max(costmap->getSizeInCellsX(), costmap->getSizeInCellsY()) *
         costmap->getResolution() / 2.0;
 
@@ -183,6 +187,7 @@ namespace adaptive_controller
 
     // From the closest point, look for the first point that's further then dist_threshold from the
     // robot. These points are definitely outside of the costmap so we won't transform them.
+    
     auto transformation_end = std::find_if(
         transformation_begin, end(global_plan_.poses),
         [&](const auto & global_plan_pose) {

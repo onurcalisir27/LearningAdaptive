@@ -1,6 +1,6 @@
 # Learning Adaptive Control for Autonomous Navigation 
 
-This repository contains the `Robot Operating System 2 (ROS2)` packages that are impelementing adaptive controller plugins for autonomous driving to a mobile 4 wheeled robot rover.
+This repository contains the `Robot Operating System 2 (ROS2)` packages that are implementing adaptive controller plugins for autonomous driving to a mobile 4 wheeled differential drive robot rover.
 
 ## Packages
 
