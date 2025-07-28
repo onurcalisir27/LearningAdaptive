@@ -32,6 +32,8 @@ class SelfTuningRegulator{
 
         void estimate();
 
+        VectorXd computeControl(VectorXd& desired, VectorXd& current, VectorXd& input);
+
     private:
     // input dim: p, output dim: k, system_dim: k x (nk + mp)
         int n_, m_;
@@ -41,7 +43,6 @@ class SelfTuningRegulator{
         int step_count_;
 
         // System ID params
-        // VectorXd alpha_;    // [output_dim]
         VectorXd Theta_;    // [system_dim]
         MatrixXd L_;        // [system_dim x output_dim_ ]
         MatrixXd P_;        // [system_dim x system_dim]
@@ -53,7 +54,11 @@ class SelfTuningRegulator{
         std::deque<VectorXd> previous_inputs_;
 
         // Controller Params
-
+        MatrixXd A_;
+        VectorXd x_;  // past outputs
+        MatrixXd Bc_; // B current
+        MatrixXd Bp_; // B past
+        VectorXd up_; // past inputs
 };
 
 #endif // SELF_TUNING_REGULATOR_HPP

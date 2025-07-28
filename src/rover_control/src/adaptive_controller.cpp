@@ -41,8 +41,8 @@ namespace adaptive_controller
             //     node, plugin_name_ + ".transform_tolerance", rclcpp::ParameterValue(
             //     0.1));
 
-            node->get_parameter(plugin_name_ + ".n", n_);
-            node->get_parameter(plugin_name_ + ".m", m_);
+            node->get_parameter(plugin_name_ + ".output_history_size", n_);
+            node->get_parameter(plugin_name_ + ".input_history_size", m_);
 
             node->get_parameter(plugin_name_ + ".input_dimension", input_dim_);
             node->get_parameter(plugin_name_ + ".output_dimension", output_dim_);
@@ -64,7 +64,6 @@ namespace adaptive_controller
 
             // Self Tuning Regulator
             controller_ = std::make_unique<SelfTuningRegulator>();
-
         }
 
     void AdaptiveController::cleanup() {
@@ -87,7 +86,6 @@ namespace adaptive_controller
         error_pub_->on_activate();
 
         controller_->init(n_, m_, input_dim_, output_dim_, lambda_, init_cov_);
-
     }
 
     void AdaptiveController::deactivate() {
@@ -117,16 +115,21 @@ namespace adaptive_controller
 
             // Convert the plan from the global planner's frame into usable robot coordinate frame
             auto reference_plan = transformGlobalPlan(pose);
+            reference_plan.poses[0].pose.position.x;
 
-            // controller_->computeControl(*)
+            // Also need to change the orientation to yaw !
             
+            VectorXd desired({reference_plan.poses[0].pose.position.x, reference_plan.poses[0].pose.position.y, reference_plan.poses[0].pose.orientation.z});
+            VectorXd current_state({pose.pose.position.x, pose.pose.position.y, pose.pose.orientation.z});
+            VectorXd prev_input({velocity.linear.x, velocity.angular.z});
 
+            VectorXd control_input = controller_->computeControl(desired, current_state, prev_input);
             
             geometry_msgs::msg::TwistStamped cmd_vel;
             cmd_vel.header.frame_id = pose.header.frame_id;
             cmd_vel.header.stamp = clock_->now();
-            cmd_vel.twist.linear.x = 0;
-            cmd_vel.twist.angular.z = 0;
+            cmd_vel.twist.linear.x = control_input(0,0);
+            cmd_vel.twist.angular.z = control_input(1,0);
             return cmd_vel;
         }
     
