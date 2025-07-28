@@ -2,11 +2,14 @@
 #include <memory>
 #include <algorithm>
 #include <string>
-
+#include <Eigen/Dense>
 #include "nav2_core/controller_exceptions.hpp"
 #include "nav2_core/planner_exceptions.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "nav2_util/geometry_utils.hpp"
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 namespace adaptive_controller
 {
@@ -25,35 +28,42 @@ namespace adaptive_controller
             clock_ = node->get_clock();
 
             // Here is where we get the params from the yaml file
-            /*
-            
-            declare_parameter_if_not_declared(
-                node, plugin_name_ + ".desired_linear_vel", rclcpp::ParameterValue(
-                0.2));
-            declare_parameter_if_not_declared(
-                node, plugin_name_ + ".lookahead_dist",
-                rclcpp::ParameterValue(0.4));
-            declare_parameter_if_not_declared(
-                node, plugin_name_ + ".max_angular_vel", rclcpp::ParameterValue(
-                1.0));
-            declare_parameter_if_not_declared(
-                node, plugin_name_ + ".transform_tolerance", rclcpp::ParameterValue(
-                0.1));
+            // declare_parameter_if_not_declared(
+            //     node, plugin_name_ + ".desired_linear_vel", rclcpp::ParameterValue(
+            //     0.2));
+            // declare_parameter_if_not_declared(
+            //     node, plugin_name_ + ".lookahead_dist",
+            //     rclcpp::ParameterValue(0.4));
+            // declare_parameter_if_not_declared(
+            //     node, plugin_name_ + ".max_angular_vel", rclcpp::ParameterValue(
+            //     1.0));
+            // declare_parameter_if_not_declared(
+            //     node, plugin_name_ + ".transform_tolerance", rclcpp::ParameterValue(
+            //     0.1));
+
+            node->get_parameter(plugin_name_ + ".n", n_);
+            node->get_parameter(plugin_name_ + ".m", m_);
+
+            node->get_parameter(plugin_name_ + ".input_dimension", input_dim_);
+            node->get_parameter(plugin_name_ + ".output_dimension", output_dim_);
+
+            node->get_parameter(plugin_name_ + ".forgetting_factor", lambda_);
+
+            node->get_parameter(plugin_name_ + ".initial_covariance", init_cov_);
 
             node->get_parameter(plugin_name_ + ".desired_linear_vel", desired_linear_vel_);
-            node->get_parameter(plugin_name_ + ".lookahead_dist", lookahead_dist_);
             node->get_parameter(plugin_name_ + ".max_angular_vel", max_angular_vel_);
+
             double transform_tolerance;
             node->get_parameter(plugin_name_ + ".transform_tolerance", transform_tolerance);
             transform_tolerance_ = rclcpp::Duration::from_seconds(transform_tolerance);
 
-            */
-
-            // Publish trajectory we are following
+            // Publishers
             global_pub_ = node->create_publisher<nav_msgs::msg::Path>("received_global_plan", 1);
+            error_pub_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("error_metrics", 10);
 
-            // Configure the Controller
-            // controller_->initialize(*)
+            // Self Tuning Regulator
+            controller_ = std::make_unique<SelfTuningRegulator>();
 
         }
 
@@ -63,8 +73,9 @@ namespace adaptive_controller
             "Cleaning up controller: %s of type adaptive_controller::AdaptiveController",
             plugin_name_.c_str());
         global_pub_.reset();
+        error_pub_.reset();
 
-        //controller_->shutdown()
+        controller_->shutdown();
     }
 
     void AdaptiveController::activate() {
@@ -73,8 +84,9 @@ namespace adaptive_controller
             "Activating controller: %s of type adaptive_controller::AdaptiveController\"  %s",
             plugin_name_.c_str(),plugin_name_.c_str());
         global_pub_->on_activate();
+        error_pub_->on_activate();
 
-        // controller_->activate(*)
+        controller_->init(n_, m_, input_dim_, output_dim_, lambda_, init_cov_);
 
     }
 
@@ -84,8 +96,9 @@ namespace adaptive_controller
             "Dectivating controller: %s of type adaptive_controller::AdaptiveController\"  %s",
             plugin_name_.c_str(),plugin_name_.c_str());
         global_pub_->on_deactivate();
+        error_pub_->on_deactivate();
         
-        // controller_->reset() / stop()
+        controller_->reset();
     }
 
     void AdaptiveController::setSpeedLimit(const double & /*speed_limit*/, const bool & /*percantage*/) {
