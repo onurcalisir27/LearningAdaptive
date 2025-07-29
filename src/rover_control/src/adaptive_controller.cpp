@@ -8,6 +8,7 @@
 #include "nav2_util/node_utils.hpp"
 #include "nav2_util/geometry_utils.hpp"
 
+using nav2_util::declare_parameter_if_not_declared;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -27,33 +28,45 @@ namespace adaptive_controller
             logger_ = node->get_logger();
             clock_ = node->get_clock();
 
-            // Here is where we get the params from the yaml file
-            // declare_parameter_if_not_declared(
-            //     node, plugin_name_ + ".desired_linear_vel", rclcpp::ParameterValue(
-            //     0.2));
-            // declare_parameter_if_not_declared(
-            //     node, plugin_name_ + ".lookahead_dist",
-            //     rclcpp::ParameterValue(0.4));
-            // declare_parameter_if_not_declared(
-            //     node, plugin_name_ + ".max_angular_vel", rclcpp::ParameterValue(
-            //     1.0));
-            // declare_parameter_if_not_declared(
-            //     node, plugin_name_ + ".transform_tolerance", rclcpp::ParameterValue(
-            //     0.1));
+             declare_parameter_if_not_declared(
+                node, plugin_name_ + ".output_history_size", rclcpp::ParameterValue(
+                0.2));
+             declare_parameter_if_not_declared(
+                node, plugin_name_ + ".input_history_size", rclcpp::ParameterValue(
+                0.2));
+             declare_parameter_if_not_declared(
+                node, plugin_name_ + ".input_dimension", rclcpp::ParameterValue(
+                0.2));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".output_dimension", rclcpp::ParameterValue(
+                0.2));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".forgetting_factor", rclcpp::ParameterValue(
+                0.2));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".initial_covariance",
+                rclcpp::ParameterValue(0.4));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".desired_linear_vel", rclcpp::ParameterValue(
+                0.2));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".lookahead_dist",
+                rclcpp::ParameterValue(0.4));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".max_angular_vel", rclcpp::ParameterValue(
+                1.0));
+            declare_parameter_if_not_declared(
+                node, plugin_name_ + ".transform_tolerance", rclcpp::ParameterValue(
+                0.1));
 
             node->get_parameter(plugin_name_ + ".output_history_size", n_);
             node->get_parameter(plugin_name_ + ".input_history_size", m_);
-
             node->get_parameter(plugin_name_ + ".input_dimension", input_dim_);
             node->get_parameter(plugin_name_ + ".output_dimension", output_dim_);
-
             node->get_parameter(plugin_name_ + ".forgetting_factor", lambda_);
-
             node->get_parameter(plugin_name_ + ".initial_covariance", init_cov_);
-
             node->get_parameter(plugin_name_ + ".desired_linear_vel", desired_linear_vel_);
             node->get_parameter(plugin_name_ + ".max_angular_vel", max_angular_vel_);
-
             double transform_tolerance;
             node->get_parameter(plugin_name_ + ".transform_tolerance", transform_tolerance);
             transform_tolerance_ = rclcpp::Duration::from_seconds(transform_tolerance);
@@ -63,6 +76,9 @@ namespace adaptive_controller
             error_pub_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("error_metrics", 10);
 
             // Self Tuning Regulator
+            prev_command_ = VectorXd::Zero(output_dim_);
+            str_windup_ = n_ + m_;
+            counter_ = 0;
             controller_ = std::make_unique<SelfTuningRegulator>();
         }
 
@@ -113,18 +129,33 @@ namespace adaptive_controller
         const geometry_msgs::msg::Twist & velocity,
         nav2_core::GoalChecker * goal_checker) {
 
-            // Convert the plan from the global planner's frame into usable robot coordinate frame
+            // Desired Reference Poses
             auto reference_plan = transformGlobalPlan(pose);
-            reference_plan.poses[0].pose.position.x;
-
-            // Also need to change the orientation to yaw !
+            auto pose_d = reference_plan.poses[0];
+            Eigen::Quaterniond Q_d(pose_d.pose.orientation.w, pose_d.pose.orientation.x, pose_d.pose.orientation.y, pose_d.pose.orientation.z);
+            double yaw_d = Q_d.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+            VectorXd desired({reference_plan.poses[0].pose.position.x, reference_plan.poses[0].pose.position.y, yaw_d});
             
-            VectorXd desired({reference_plan.poses[0].pose.position.x, reference_plan.poses[0].pose.position.y, reference_plan.poses[0].pose.orientation.z});
-            VectorXd current_state({pose.pose.position.x, pose.pose.position.y, pose.pose.orientation.z});
+            // Current pose (last output measured)
+            Eigen::Quaterniond Q_c(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
+            double yaw_c = Q_c.toRotationMatrix().eulerAngles(0, 1, 2)[2];
+            VectorXd current_state({pose.pose.position.x, pose.pose.position.y, yaw_c});
+            
+            // Current velocity (last input measured)
             VectorXd prev_input({velocity.linear.x, velocity.angular.z});
 
+            // Self tuning regulator
             VectorXd control_input = controller_->computeControl(desired, current_state, prev_input);
             
+            // Error metrics
+            VectorXd error = prev_command_ - current_state;
+            prev_command_ = desired;
+            std_msgs::msg::Float64MultiArray error_msg;
+            error_msg.data = {error(0,0), error(1,0), error(2,0)};
+            error_pub_->publish(error_msg);
+            
+            // Velocity Command
+            counter_ ++;
             geometry_msgs::msg::TwistStamped cmd_vel;
             cmd_vel.header.frame_id = pose.header.frame_id;
             cmd_vel.header.stamp = clock_->now();

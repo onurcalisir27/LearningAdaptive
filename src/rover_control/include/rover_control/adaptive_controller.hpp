@@ -72,8 +72,10 @@ class AdaptiveController : public nav2_core::Controller
         // Controller Specific Paramaters
         int n_, m_, input_dim_, output_dim_;
         double lambda_, init_cov_;
+        int str_windup_, counter_;
         double desired_linear_vel_;
-        double max_angular_vel_;        
+        double max_angular_vel_;    
+        Eigen::VectorXd prev_command_;
 };
 
 } // adaptive_controller
