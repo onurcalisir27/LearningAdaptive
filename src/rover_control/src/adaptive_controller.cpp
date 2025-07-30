@@ -28,24 +28,23 @@ namespace adaptive_controller
             logger_ = node->get_logger();
             clock_ = node->get_clock();
 
-             declare_parameter_if_not_declared(
+            declare_parameter_if_not_declared(
                 node, plugin_name_ + ".output_history_size", rclcpp::ParameterValue(
-                0.2));
-             declare_parameter_if_not_declared(
+                1.0));
+            declare_parameter_if_not_declared(
                 node, plugin_name_ + ".input_history_size", rclcpp::ParameterValue(
-                0.2));
-             declare_parameter_if_not_declared(
+                1.0));
+            declare_parameter_if_not_declared(
                 node, plugin_name_ + ".input_dimension", rclcpp::ParameterValue(
-                0.2));
+                1.0));
             declare_parameter_if_not_declared(
                 node, plugin_name_ + ".output_dimension", rclcpp::ParameterValue(
-                0.2));
+                1.0));
             declare_parameter_if_not_declared(
                 node, plugin_name_ + ".forgetting_factor", rclcpp::ParameterValue(
-                0.2));
+                0.99));
             declare_parameter_if_not_declared(
-                node, plugin_name_ + ".initial_covariance",
-                rclcpp::ParameterValue(0.4));
+                node, plugin_name_ + ".initial_covariance", rclcpp::ParameterValue(0.4));
             declare_parameter_if_not_declared(
                 node, plugin_name_ + ".desired_linear_vel", rclcpp::ParameterValue(
                 0.2));
@@ -153,7 +152,7 @@ namespace adaptive_controller
             std_msgs::msg::Float64MultiArray error_msg;
             error_msg.data = {error(0,0), error(1,0), error(2,0)};
             error_pub_->publish(error_msg);
-            
+
             // Velocity Command
             counter_ ++;
             geometry_msgs::msg::TwistStamped cmd_vel;

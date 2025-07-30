@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <gazebo reference="base_link">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <static>true</static>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+  </gazebo>
+
+  <gazebo reference="pendulum_link">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+  </gazebo>
+
+  <gazebo reference="pendulum_joint">
+    <physics>
+      <ode>
+        <implicit_spring_damper>true</implicit_spring_damper>
+        <cfm_damping>true</cfm_damping>
+        <cfm>0.000001</cfm>
+        <erp>0.2</erp>
+      </ode>
+    </physics>
+    <dynamics damping="0.02" friction="0.01"/>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz-sim-joint-state-publisher-system" 
+            name="gz::sim::systems::JointStatePublisher">
+      <joint_name>pendulum_joint</joint_name>
+      <topic>joint_states</topic>
+      <update_rate>50</update_rate>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" 
+            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find rover_control)/config/pendulum_controller.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

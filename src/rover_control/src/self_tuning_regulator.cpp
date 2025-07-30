@@ -51,6 +51,10 @@ void SelfTuningRegulator::start(){
 
 void SelfTuningRegulator::construct_phi(VectorXd output, VectorXd input) {
 
+    std::cout << "phi_ size: " << phi_.size() << std::endl;
+    std::cout << "Phi_ size: " << Phi_.rows() << "x" << Phi_.cols() << std::endl;
+    std::cout << "phi_dim_: " << phi_dim_ << ", output_dim_: " << output_dim_ << std::endl;
+    
     for (int i=0; i < previous_outputs_.size(); i++){
     phi_.segment(i*output_dim_, output_dim_) = previous_outputs_[i];
     }
@@ -59,7 +63,8 @@ void SelfTuningRegulator::construct_phi(VectorXd output, VectorXd input) {
     }
 
     for (int k=0; k < output_dim_; k++){
-        Phi_.block(k, k*phi_dim_, 1, phi_dim_) = phi_.transpose();
+        // Phi_.block(k, k*phi_dim_, 1, phi_dim_) = phi_.transpose();
+        Phi_.row(k).segment(k*phi_dim_, phi_dim_) = phi_.transpose();
     }
 }
 
@@ -76,41 +81,77 @@ P(k) = [ I - L(k-1) * phi'(k) ] * P(k-1) / lambda
 */
 void SelfTuningRegulator::update(VectorXd output, VectorXd input){
 
+    std::cout << "Updating L, for the :" << step_count_ << "'s time step"<< std::endl;
     MatrixXd L_den = MatrixXd::Identity(output_dim_,output_dim_) * lambda_ + Phi_ * P_ * Phi_.transpose();
     L_ = (P_ * Phi_.transpose() ) * L_den.inverse();
-
     // L_ = (P_ * Phi_.transpose()) * L_den.ldlt().solve(MatrixXd::Identity(output_dim_, output_dim_));
-
+    
+    std::cout << "Updating Theta, for the :" << step_count_ << "'s time step"<< std::endl;
     Theta_ = Theta_ + L_ * (output - Phi_ * Theta_);
 
+    std::cout << "Updating P, for the :" << step_count_ << "'s time step"<< std::endl;
     P_ = (MatrixXd::Identity(system_dim_, system_dim_) - (L_ * Phi_)) * P_ / lambda_;
 
     construct_phi(output, input); // for next update
 }
 
-void SelfTuningRegulator::estimate(){
-    // y_des = [Theta1; Theta2; Theta3][]
-    //[3 x 1]            [3 x 3n]
-    int idx(0);
+// void SelfTuningRegulator::estimate(){
+//     // y_des = [Theta1; Theta2; Theta3][]
+//     //[3 x 1]            [3 x 3n]
+//     int idx(0);
 
+//     std::cout << "Constructing x, for the :" << step_count_ << "'s time step"<< std::endl;
+//     for (VectorXd i : previous_outputs_){
+//         x_.segment(idx*output_dim_, output_dim_) = i; 
+//         idx++;
+//     }
+//     idx = 0;
+//     std::cout << "Constructing up, for the :" << step_count_ << "'s time step"<< std::endl;
+//     for(VectorXd j : previous_inputs_){
+//         up_.segment(idx*input_dim_, input_dim_) = j;
+//     }
+    
+//     std::cout << "Constructing A, Bc, Bp, for the :" << step_count_ << "'s time step"<< std::endl;
+//     for(int i = 0; i < output_dim_; i++) {
+//         A_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_), output_dim_ * n_).transpose();
+//         Bc_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_, input_dim_).transpose();
+//         Bp_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_* n_ + input_dim_, (m_ - 1) * input_dim_).transpose();
+//     }
+
+// }
+
+void SelfTuningRegulator::estimate(){
+    int idx(0);
+    std::cout << "Constructing x, for the :" << step_count_ << "'s time step"<< std::endl;
     for (VectorXd i : previous_outputs_){
-        x_.segment(idx*output_dim_, output_dim_) = i; 
+        x_.segment(idx*output_dim_, output_dim_) = i;
         idx++;
     }
     idx = 0;
+    std::cout << "Constructing up, for the :" << step_count_ << "'s time step"<< std::endl;
     for(VectorXd j : previous_inputs_){
         up_.segment(idx*input_dim_, input_dim_) = j;
+        idx++;
     }
- 
+    
+    std::cout << "Constructing A, Bc, Bp, for the :" << step_count_ << "'s time step"<< std::endl;
+    std::cout << "Theta_ size: " << Theta_.size() << std::endl;
+    std::cout << "A_ size: " << A_.rows() << "x" << A_.cols() << std::endl;
+    std::cout << "output_dim_: " << output_dim_ << ", n_: " << n_ << ", m_: " << m_ << ", input_dim_: " << input_dim_ << std::endl;
+    
     for(int i = 0; i < output_dim_; i++) {
-
-        A_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_), output_dim_ * n_).transpose();
-
-        Bc_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + 3 * n_, input_dim_).transpose();
-
-        Bp_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + 3 * n_ + input_dim_, (m_ - 1) * input_dim_).transpose();
+        int start_A = i*(output_dim_ * n_ + input_dim_ * m_);
+        int start_Bc = i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_;
+        int start_Bp = i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_ + input_dim_;
+        
+        std::cout << "Row " << i << ": A segment[" << start_A << ":" << start_A + output_dim_ * n_ - 1 << "]" << std::endl;
+        std::cout << "Row " << i << ": Bc segment[" << start_Bc << ":" << start_Bc + input_dim_ - 1 << "]" << std::endl;
+        std::cout << "Row " << i << ": Bp segment[" << start_Bp << ":" << start_Bp + (m_-1)*input_dim_ - 1 << "]" << std::endl;
+        
+        A_.row(i) = Theta_.segment(start_A, output_dim_ * n_).transpose();
+        Bc_.row(i) = Theta_.segment(start_Bc, input_dim_).transpose();
+        Bp_.row(i) = Theta_.segment(start_Bp, (m_ - 1) * input_dim_).transpose();
     }
-
 }
 
 VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& current, VectorXd& prev_input){
@@ -120,7 +161,8 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
         exit(1);
     }
 
-    VectorXd u_c(input_dim_);
+    VectorXd u_c = VectorXd::Random(input_dim_) * 0.01;
+
     previous_outputs_.push_front(current);
     previous_inputs_.push_front(prev_input);
 
@@ -129,14 +171,16 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
 
     if (step_count_ < n_ + m_){
         std::cout << "Not enough information, use different controller \n";
-        u_c = VectorXd::Zero(input_dim_);
 
     } else{
         std::cout << "Using estimated parameters to calculate control effort! \n";
         estimate();
-        u_c = Bc_.inverse() * (desired - A_ * x_ - Bp_ * up_);
+        std::cout << "Parameters estimated, for the :" << step_count_ << "'s time step" << std::endl;
+        std::cout << "If it fails now, we got an inverse error" << std::endl;
+        u_c = u_c + Bc_.inverse() * (desired - A_ * x_ - Bp_ * up_);
     }
 
+    std::cout << "Running update now, for the :" << step_count_ << "'s time step" << std::endl;
     update(current, prev_input);
     step_count_++;
 
