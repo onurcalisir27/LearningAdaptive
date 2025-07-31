@@ -26,9 +26,13 @@ class SelfTuningRegulator{
 
         void start();
 
-        void construct_phi(VectorXd output, VectorXd input);
+        void construct_phi();
 
-        void update(VectorXd output, VectorXd input);
+        void update(VectorXd desired);
+        
+        VectorXd get_theta_parameters() {return Theta_;}
+
+        MatrixXd get_covariance_matrix() {return P_;}
 
         void estimate();
 
@@ -36,11 +40,12 @@ class SelfTuningRegulator{
 
     private:
     // input dim: p, output dim: k, system_dim: k x (nk + mp)
-        int n_, m_;
-        int system_dim_, phi_dim_, output_dim_, input_dim_;
+        uint n_, m_;
+        uint system_dim_, phi_dim_, output_dim_, input_dim_;
         double lambda_;
         bool initialized_;
         int step_count_;
+        bool no_input_history;
 
         // System ID params
         VectorXd Theta_;    // [system_dim]

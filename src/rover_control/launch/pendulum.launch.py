@@ -89,6 +89,16 @@ def generate_launch_description():
         output='screen'
     )
 
+    str_node = Node(
+        package='rover_control',
+        executable='pendulum_control_node',
+    )
+
+    delay_str = TimerAction(
+        period=11.0,
+        actions=[str_node]
+    )
+
     ld = LaunchDescription()
     ld.add_action(urdf_pub)
     ld.add_action(simulation)
@@ -96,6 +106,7 @@ def generate_launch_description():
     ld.add_action(delay_controller)
     ld.add_action(delay_joints)
     ld.add_action(bridge)
+    ld.add_action(delay_str)
 
     return ld
 

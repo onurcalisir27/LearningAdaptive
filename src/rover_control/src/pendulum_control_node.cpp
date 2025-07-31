@@ -4,6 +4,7 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 
 #include <chrono>
+#include <array>
 #include <memory>
 #include <Eigen/Dense>
 
@@ -17,17 +18,24 @@ class PendulumControlNode : public rclcpp::Node
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            controller_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumControlNode::controlPendulum, this));
+            controller_timer_ = this->create_wall_timer(1ms, std::bind(&PendulumControlNode::controlPendulum, this));
+
+            covariance_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/covarianceMatrix", 10);
+            covariance_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishCov, this));
+
+            parameters_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/parameters", 10);
+            parameters_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishTheta, this));
+
             controller_ = std::make_unique<SelfTuningRegulator>();
 
-            input_history_order_ = 2;   // Starting off small
+            input_history_order_ = 1;
             output_history_order_ = 2; 
 
-            input_dim_ = 1;             // torque on one joint [j] for j many joints
-            output_dim_ = 2;            // position and velocity of the joint [2j] for j many joints
+            input_dim_ = 1;             // torque
+            output_dim_ = 1;            // angle
 
-            lambda_ = 0.98;             // start with theoretical prescription
-            double init_cov = 1000.0;   // Start with large initial covariance
+            lambda_ = 0.99;
+            double init_cov = 10000.0;   // Start with large initial covariance
 	    
 	        prev_input_ = VectorXd::Zero(input_dim_);
 	        current_state_ = VectorXd::Zero(output_dim_);
@@ -42,9 +50,10 @@ class PendulumControlNode : public rclcpp::Node
 
         void get_feedback(const sensor_msgs::msg::JointState::SharedPtr msg){
             
-            for(size_t i=0; i < msg->name.size(); i++){ 
-                current_state_.segment(i*output_dim_, 2) << msg->position[i], msg->velocity[i];
-            }
+            // for(size_t i=0; i < msg->name.size(); i++){ 
+            //     current_state_.segment(i*output_dim_, 2) << msg->position[i];
+            // }
+            current_state_(0,0) = msg->position[0];
             // RCLCPP_INFO(this->get_logger(), "The current state is: ", current_state_);
 
         } 
@@ -54,16 +63,39 @@ class PendulumControlNode : public rclcpp::Node
             VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
             RCLCPP_INFO(this->get_logger(), "Commanding torque: ", control_effort);
 
-	        prev_input_ = control_effort;
+            float input = std::clamp(control_effort(0,0), -5.0, 5.0);
+	        prev_input_(0,0) =  input;
+
             std_msgs::msg::Float64MultiArray command;
-            command.data = {control_effort(0,0)};
+            command.data = {input};
             torque_pub_->publish(command);
         }
 
+        void publishCov(){
+            MatrixXd covMat = controller_->get_covariance_matrix();
+            std_msgs::msg::Float64MultiArray covariance;
+            
+            covariance.data.assign(covMat.data(), covMat.data() + covMat.size());
+            covariance_pub_->publish(covariance);
+        }
+
+        void publishTheta(){
+            VectorXd theta = controller_->get_theta_parameters();
+            std_msgs::msg::Float64MultiArray parameters;
+            
+            parameters.data.assign(theta.data(), theta.data() + theta.size());
+            covariance_pub_->publish(parameters);
+        }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr covariance_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr parameters_pub_;
+
         rclcpp::TimerBase::SharedPtr controller_timer_;
+        rclcpp::TimerBase::SharedPtr covariance_timer_;
+        rclcpp::TimerBase::SharedPtr parameters_timer_;
+
         
         std::unique_ptr<SelfTuningRegulator> controller_;
         
