@@ -20,7 +20,7 @@ class PendulumControlNode : public rclcpp::Node
             controller_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumControlNode::controlPendulum, this));
             controller_ = std::make_unique<SelfTuningRegulator>();
 
-            input_history_order_ = 1;   // Starting off small
+            input_history_order_ = 2;   // Starting off small
             output_history_order_ = 2; 
 
             input_dim_ = 1;             // torque on one joint [j] for j many joints
@@ -45,11 +45,15 @@ class PendulumControlNode : public rclcpp::Node
             for(size_t i=0; i < msg->name.size(); i++){ 
                 current_state_.segment(i*output_dim_, 2) << msg->position[i], msg->velocity[i];
             }
+            // RCLCPP_INFO(this->get_logger(), "The current state is: ", current_state_);
+
         } 
 
         void controlPendulum(){
 
             VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
+            RCLCPP_INFO(this->get_logger(), "Commanding torque: ", control_effort);
+
 	        prev_input_ = control_effort;
             std_msgs::msg::Float64MultiArray command;
             command.data = {control_effort(0,0)};

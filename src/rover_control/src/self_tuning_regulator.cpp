@@ -30,10 +30,10 @@ void SelfTuningRegulator::init(int n, int m, int input_dim, int output_dim, doub
 
     A_ = MatrixXd::Zero(output_dim_, output_dim_*n_);
     Bc_ = MatrixXd::Zero(output_dim_, input_dim_);
-    Bp_ = MatrixXd::Zero(output_dim_, input_dim_*m_);
+    Bp_ = MatrixXd::Zero(output_dim_, input_dim_ * (m_-1));
 
     x_ = VectorXd(output_dim_ * n_);
-    up_ = VectorXd(input_dim_ * m_);
+    up_ = VectorXd(input_dim_ * (m_-1));
 }
 
 void SelfTuningRegulator::shutdown(){
@@ -95,64 +95,34 @@ void SelfTuningRegulator::update(VectorXd output, VectorXd input){
     construct_phi(output, input); // for next update
 }
 
-// void SelfTuningRegulator::estimate(){
-//     // y_des = [Theta1; Theta2; Theta3][]
-//     //[3 x 1]            [3 x 3n]
-//     int idx(0);
-
-//     std::cout << "Constructing x, for the :" << step_count_ << "'s time step"<< std::endl;
-//     for (VectorXd i : previous_outputs_){
-//         x_.segment(idx*output_dim_, output_dim_) = i; 
-//         idx++;
-//     }
-//     idx = 0;
-//     std::cout << "Constructing up, for the :" << step_count_ << "'s time step"<< std::endl;
-//     for(VectorXd j : previous_inputs_){
-//         up_.segment(idx*input_dim_, input_dim_) = j;
-//     }
-    
-//     std::cout << "Constructing A, Bc, Bp, for the :" << step_count_ << "'s time step"<< std::endl;
-//     for(int i = 0; i < output_dim_; i++) {
-//         A_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_), output_dim_ * n_).transpose();
-//         Bc_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_, input_dim_).transpose();
-//         Bp_.row(i) = Theta_.segment(i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_* n_ + input_dim_, (m_ - 1) * input_dim_).transpose();
-//     }
-
-// }
-
 void SelfTuningRegulator::estimate(){
+
     int idx(0);
-    std::cout << "Constructing x, for the :" << step_count_ << "'s time step"<< std::endl;
+    std::cout << "Constructing x, for the: " << step_count_ << "th time step"<< std::endl;
     for (VectorXd i : previous_outputs_){
-        x_.segment(idx*output_dim_, output_dim_) = i;
+        x_.segment(idx*output_dim_, output_dim_) = i; 
         idx++;
     }
     idx = 0;
-    std::cout << "Constructing up, for the :" << step_count_ << "'s time step"<< std::endl;
+    std::cout << "Constructing up, for the: " << step_count_ << "th time step"<< std::endl;
     for(VectorXd j : previous_inputs_){
+        if (j == previous_inputs_.back()) {continue;}
         up_.segment(idx*input_dim_, input_dim_) = j;
         idx++;
     }
     
-    std::cout << "Constructing A, Bc, Bp, for the :" << step_count_ << "'s time step"<< std::endl;
-    std::cout << "Theta_ size: " << Theta_.size() << std::endl;
-    std::cout << "A_ size: " << A_.rows() << "x" << A_.cols() << std::endl;
-    std::cout << "output_dim_: " << output_dim_ << ", n_: " << n_ << ", m_: " << m_ << ", input_dim_: " << input_dim_ << std::endl;
-    
+    std::cout << "Constructing A, Bc, Bp, for the: " << step_count_ << "th time step"<< std::endl;
     for(int i = 0; i < output_dim_; i++) {
-        int start_A = i*(output_dim_ * n_ + input_dim_ * m_);
-        int start_Bc = i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_;
-        int start_Bp = i*(output_dim_ * n_ + input_dim_ * m_) + output_dim_ * n_ + input_dim_;
-        
-        std::cout << "Row " << i << ": A segment[" << start_A << ":" << start_A + output_dim_ * n_ - 1 << "]" << std::endl;
-        std::cout << "Row " << i << ": Bc segment[" << start_Bc << ":" << start_Bc + input_dim_ - 1 << "]" << std::endl;
-        std::cout << "Row " << i << ": Bp segment[" << start_Bp << ":" << start_Bp + (m_-1)*input_dim_ - 1 << "]" << std::endl;
-        
-        A_.row(i) = Theta_.segment(start_A, output_dim_ * n_).transpose();
-        Bc_.row(i) = Theta_.segment(start_Bc, input_dim_).transpose();
-        Bp_.row(i) = Theta_.segment(start_Bp, (m_ - 1) * input_dim_).transpose();
+        std::cout << "Building A now! \n";
+        A_.row(i) = Theta_.segment((i * phi_dim_), output_dim_ * n_).transpose();
+        std::cout << "Building Bc now! \n";
+        Bc_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_ * n_)), input_dim_).transpose();
+        std::cout << "Building Bp now! \n";
+        Bp_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_* n_ + input_dim_)), (m_ - 1) * input_dim_).transpose();
     }
+    std::cout << "Built all matrices, moving on... \n";
 }
+
 
 VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& current, VectorXd& prev_input){
 
@@ -177,7 +147,9 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
         estimate();
         std::cout << "Parameters estimated, for the :" << step_count_ << "'s time step" << std::endl;
         std::cout << "If it fails now, we got an inverse error" << std::endl;
-        u_c = u_c + Bc_.inverse() * (desired - A_ * x_ - Bp_ * up_);
+        MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
+        u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
+        std::cout << "We computed u_c = " << u_c << " moving on..." << std::endl;
     }
 
     std::cout << "Running update now, for the :" << step_count_ << "'s time step" << std::endl;
