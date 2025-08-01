@@ -92,6 +92,7 @@ def generate_launch_description():
     str_node = Node(
         package='rover_control',
         executable='pendulum_control_node',
+        output='screen'
     )
 
     delay_str = TimerAction(

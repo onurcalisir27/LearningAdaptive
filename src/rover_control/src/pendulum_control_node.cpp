@@ -18,7 +18,7 @@ class PendulumControlNode : public rclcpp::Node
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            controller_timer_ = this->create_wall_timer(1ms, std::bind(&PendulumControlNode::controlPendulum, this));
+            controller_timer_ = this->create_wall_timer(0.5ms, std::bind(&PendulumControlNode::controlPendulum, this));
 
             covariance_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/covarianceMatrix", 10);
             covariance_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishCov, this));
@@ -61,10 +61,14 @@ class PendulumControlNode : public rclcpp::Node
         void controlPendulum(){
 
             VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
-            RCLCPP_INFO(this->get_logger(), "Commanding torque: ", control_effort);
+	    //            RCLCPP_INFO(this->get_logger(), "Commanding torque: %d", control_effort(0,0));
 
+	    /*
             float input = std::clamp(control_effort(0,0), -5.0, 5.0);
 	        prev_input_(0,0) =  input;
+	    */
+            float input = control_effort(0,0);
+            prev_input_(0,0) =  input;
 
             std_msgs::msg::Float64MultiArray command;
             command.data = {input};

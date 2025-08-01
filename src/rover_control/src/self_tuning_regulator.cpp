@@ -2,9 +2,12 @@
 #include <iostream>
 #include <cstdint>
 #include <Eigen/Dense>
+#include <algorithm>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+
+#define CLAMP_COVARIANCE
 
 void SelfTuningRegulator::init(int n, int m, int input_dim, int output_dim, double lambda, double init_cov){
 
@@ -74,8 +77,8 @@ void SelfTuningRegulator::construct_phi() {
     }
 }
 
-void SelfTuningRegulator::update(VectorXd desired){
-
+void SelfTuningRegulator::update(VectorXd desired)
+{
     std::cout << "Updating L, for the: " << step_count_ << "th time step"<< std::endl;
     MatrixXd L_den = MatrixXd::Identity(output_dim_,output_dim_) * lambda_ + Phi_ * P_ * Phi_.transpose();
     L_ = (P_ * Phi_.transpose() ) * L_den.inverse();
@@ -84,8 +87,39 @@ void SelfTuningRegulator::update(VectorXd desired){
     std::cout << "Updating Theta, for the: " << step_count_ << "th time step"<< std::endl;
     Theta_ = Theta_ + L_ * (desired - Phi_ * Theta_);
 
+    for (int iLoop=n_; iLoop<n_+m_; iLoop++)
+    {
+      double dLimit=0.98;
+      Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
+    }
+
     std::cout << "Updating P, for the: " << step_count_ << "th time step" << std::endl;
     P_ = (MatrixXd::Identity(system_dim_, system_dim_) - (L_ * Phi_)) * P_ / lambda_;
+
+    for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
+    {
+      double dLimitDiagonal=10000.0;
+      double dLimitOffDiagonal=100.0;
+#ifdef CLAMP_COVARIANCE     
+      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 0.0, dLimitDiagonal);
+#endif // CLAMP_COVARIANCE     
+      for (int iLoop2=0; iLoop2<system_dim_; iLoop2++)
+      {
+	if (iLoop1 == iLoop2)
+        {
+          fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
+	  continue;
+	}
+        else
+        {
+#ifdef CLAMP_COVARIANCE     
+          P_(iLoop1,iLoop2)=std::clamp(P_(iLoop1,iLoop2), 0.0, dLimitOffDiagonal);
+#endif // CLAMP_COVARIANCE     
+          fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
+	}
+      }
+      fprintf(stdout, "\n"), fflush(stdout);
+    }
 
     construct_phi(); // for next update
 }
@@ -158,10 +192,11 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
         // MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
         std::cout << "We obtained Bc_inv" << std::endl;
 
-        if (no_input_history){
-            double B_clamped = std::clamp(Bc_(0,0), -0.95, 0.95);
-            double Bc_inv = 1.0 / B_clamped;
-            u_c = u_c + Bc_inv * (desired - A_ * x_);
+        if (no_input_history)
+        {
+          double Bc_temp = std::max(Bc_(0,0),0.001);
+	  double Bc_inv = 1.0 / Bc_temp;
+          u_c = u_c + Bc_inv * (desired - A_ * x_);
         } else{
             u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
         }
