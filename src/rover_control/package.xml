@@ -23,6 +23,7 @@
   <depend>nav2_costmap_2d</depend>
   <depend>nav2_msgs</depend>
   <depend>tf2</depend>
+  <depend>plotjuggler-ros</depend>
   <exec_depend>nav2_bringup</exec_depend>
  
   <depend>tf2_ros</depend>
