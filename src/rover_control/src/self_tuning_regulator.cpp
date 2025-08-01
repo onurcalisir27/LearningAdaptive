@@ -82,15 +82,16 @@ void SelfTuningRegulator::update(VectorXd desired)
     std::cout << "Updating L, for the: " << step_count_ << "th time step"<< std::endl;
     MatrixXd L_den = MatrixXd::Identity(output_dim_,output_dim_) * lambda_ + Phi_ * P_ * Phi_.transpose();
     L_ = (P_ * Phi_.transpose() ) * L_den.inverse();
+    // L_ = (P_ * Phi_.transpose()) * L_den.completeOrthogonalDecomposition().pseudoInverse();
     // L_ = (P_ * Phi_.transpose()) * L_den.ldlt().solve(MatrixXd::Identity(output_dim_, output_dim_));
     
     std::cout << "Updating Theta, for the: " << step_count_ << "th time step"<< std::endl;
     Theta_ = Theta_ + L_ * (desired - Phi_ * Theta_);
-
-    for (int iLoop=n_; iLoop<n_+m_; iLoop++)
+    
+    double dLimit=0.95;
+    for (int iLoop= output_dim_*n_; iLoop < phi_dim_; iLoop++)
     {
-      double dLimit=0.95;
-      Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
+        Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
     }
 
     std::cout << "Updating P, for the: " << step_count_ << "th time step" << std::endl;
@@ -101,7 +102,7 @@ void SelfTuningRegulator::update(VectorXd desired)
       double dLimitDiagonal=10000.0;
       double dLimitOffDiagonal=100.0;
 #ifdef CLAMP_COVARIANCE     
-      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 100.0, dLimitDiagonal);
+      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 0.0, dLimitDiagonal);
 #endif // CLAMP_COVARIANCE     
       for (int iLoop2=0; iLoop2<system_dim_; iLoop2++)
       {
@@ -152,7 +153,6 @@ void SelfTuningRegulator::estimate(){
         std::cout << "Building Bc now! \n";
         Bc_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_ * n_)), input_dim_).transpose();
 
-        
         if (!no_input_history){
             std::cout << "Building Bp now! \n";
             Bp_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_* n_ + input_dim_)), (m_ - 1) * input_dim_).transpose();
@@ -194,9 +194,10 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
 
         if (no_input_history)
         {
-          double Bc_temp = std::max(Bc_(0,0),0.001);
-	  double Bc_inv = 1.0 / Bc_temp;
-          u_c = u_c + Bc_inv * (desired - A_ * x_);
+            double Bc_temp = std::max(Bc_(0,0),0.001);
+            double Bc_inv = 1.0 / Bc_temp;
+            u_c = u_c + Bc_inv * (desired - A_ * x_);
+
         } else{
             u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
         }
