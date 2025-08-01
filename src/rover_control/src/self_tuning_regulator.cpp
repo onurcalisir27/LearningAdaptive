@@ -89,19 +89,19 @@ void SelfTuningRegulator::update(VectorXd desired)
 
     for (int iLoop=n_; iLoop<n_+m_; iLoop++)
     {
-      double dLimit=0.98;
+      double dLimit=0.95;
       Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
     }
 
     std::cout << "Updating P, for the: " << step_count_ << "th time step" << std::endl;
     P_ = (MatrixXd::Identity(system_dim_, system_dim_) - (L_ * Phi_)) * P_ / lambda_;
 
-    for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
-    {
+	for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
+	{
       double dLimitDiagonal=10000.0;
       double dLimitOffDiagonal=100.0;
 #ifdef CLAMP_COVARIANCE     
-      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 0.0, dLimitDiagonal);
+      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 100.0, dLimitDiagonal);
 #endif // CLAMP_COVARIANCE     
       for (int iLoop2=0; iLoop2<system_dim_; iLoop2++)
       {

@@ -63,11 +63,9 @@ class PendulumControlNode : public rclcpp::Node
             VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
 	    //            RCLCPP_INFO(this->get_logger(), "Commanding torque: %d", control_effort(0,0));
 
-	    /*
+	    
             float input = std::clamp(control_effort(0,0), -5.0, 5.0);
-	        prev_input_(0,0) =  input;
-	    */
-            float input = control_effort(0,0);
+           //float input = control_effort(0,0);
             prev_input_(0,0) =  input;
 
             std_msgs::msg::Float64MultiArray command;
@@ -88,7 +86,7 @@ class PendulumControlNode : public rclcpp::Node
             std_msgs::msg::Float64MultiArray parameters;
             
             parameters.data.assign(theta.data(), theta.data() + theta.size());
-            covariance_pub_->publish(parameters);
+	    parameters_pub_->publish(parameters);
         }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
