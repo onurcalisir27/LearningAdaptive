@@ -18,7 +18,7 @@ class PendulumControlNode : public rclcpp::Node
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            controller_timer_ = this->create_wall_timer(1ms, std::bind(&PendulumControlNode::controlPendulum, this));
+            controller_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::controlPendulum, this));
 
             covariance_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/covarianceMatrix", 10);
             covariance_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishCov, this));
@@ -34,8 +34,8 @@ class PendulumControlNode : public rclcpp::Node
             input_dim_ = 1;             // torque
             output_dim_ = 1;            // angle
 
-            lambda_ = 0.9;
-            double init_cov = 10000.0;   // Start with large initial covariance
+            lambda_ = 0.8;
+            double init_cov = 1000.0;   // Start with large initial covariance
 	    
 	        prev_input_ = VectorXd::Zero(input_dim_);
 	        current_state_ = VectorXd::Zero(output_dim_);
@@ -43,7 +43,8 @@ class PendulumControlNode : public rclcpp::Node
             controller_->init(output_history_order_, input_history_order_, input_dim_, output_dim_, lambda_, init_cov);
             controller_->start();
             
-            desired_state_ = VectorXd::Zero(output_dim_); 
+            desired_state_ = VectorXd::Zero(output_dim_);
+            // desired_state_ = VectorXd::Ones(output_dim_) * 0.3; 
         }
 
     private:
