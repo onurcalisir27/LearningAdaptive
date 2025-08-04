@@ -42,7 +42,7 @@ class SelfTuningRegulator{
     // input dim: p, output dim: k, system_dim: k x (nk + mp)
         uint n_, m_;
         uint system_dim_, phi_dim_, output_dim_, input_dim_;
-        double lambda_;
+        double lambda_, initial_covariance_;
         bool initialized_;
         int step_count_;
         bool no_input_history;

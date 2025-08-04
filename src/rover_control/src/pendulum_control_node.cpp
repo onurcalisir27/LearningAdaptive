@@ -17,6 +17,10 @@ class PendulumControlNode : public rclcpp::Node
 
             this->declare_parameter("forgetting_factor", 0.98);
             lambda_ = this->get_parameter("forgetting_factor").as_double();
+
+            this->declare_parameter("desired_angle", 0.0);
+            double desired_angle = this->get_parameter("desired_angle").as_double();
+
             
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
@@ -45,8 +49,8 @@ class PendulumControlNode : public rclcpp::Node
             controller_->init(output_history_order_, input_history_order_, input_dim_, output_dim_, lambda_, init_cov);
             controller_->start();
             
-            desired_state_ = VectorXd::Zero(output_dim_);
-            // desired_state_ = VectorXd::Ones(output_dim_) * 0.3; 
+            // desired_state_ = VectorXd::Zero(output_dim_);
+            desired_state_ = VectorXd::Ones(output_dim_) * desired_angle;
         }
 
     private:
@@ -64,11 +68,11 @@ class PendulumControlNode : public rclcpp::Node
         void controlPendulum(){
 
             VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
-	    //            RCLCPP_INFO(this->get_logger(), "Commanding torque: %d", control_effort(0,0));
+	    //  RCLCPP_INFO(this->g   et_logger(), "Commanding torque: %d", control_effort(0,0));
 
 	    
             float input = std::clamp(control_effort(0,0), -5.0, 5.0);
-           //float input = control_effort(0,0);
+            //float input = control_effort(0,0);
             prev_input_(0,0) =  input;
 
             std_msgs::msg::Float64MultiArray command;
@@ -89,7 +93,7 @@ class PendulumControlNode : public rclcpp::Node
             std_msgs::msg::Float64MultiArray parameters;
             
             parameters.data.assign(theta.data(), theta.data() + theta.size());
-	    parameters_pub_->publish(parameters);
+	        parameters_pub_->publish(parameters);
         }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
@@ -101,7 +105,6 @@ class PendulumControlNode : public rclcpp::Node
         rclcpp::TimerBase::SharedPtr covariance_timer_;
         rclcpp::TimerBase::SharedPtr parameters_timer_;
 
-        
         std::unique_ptr<SelfTuningRegulator> controller_;
         
         VectorXd current_state_;

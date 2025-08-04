@@ -20,10 +20,11 @@ void SelfTuningRegulator::init(int n, int m, int input_dim, int output_dim, doub
     lambda_ = lambda;
     initialized_ = false;
     step_count_ = 0;
+    initial_covariance_ = init_cov;
 
     Theta_ = VectorXd::Random(system_dim_);
     L_ = MatrixXd::Zero(system_dim_, output_dim_);
-    P_ = MatrixXd::Identity(system_dim_, system_dim_) * init_cov;
+    P_ = MatrixXd::Identity(system_dim_, system_dim_) * initial_covariance_;
 
     phi_ = VectorXd::Zero(phi_dim_);
     Phi_ =  MatrixXd::Zero(output_dim_, system_dim_);
@@ -53,6 +54,26 @@ void SelfTuningRegulator::shutdown(){
 
 void SelfTuningRegulator::reset(){
 
+    Theta_ = VectorXd::Random(system_dim_);
+    L_ = MatrixXd::Zero(system_dim_, output_dim_);
+    P_ = MatrixXd::Identity(system_dim_, system_dim_) * initial_covariance_;
+
+    phi_ = VectorXd::Zero(phi_dim_);
+    Phi_ =  MatrixXd::Zero(output_dim_, system_dim_);
+
+    previous_outputs_.resize(n_, VectorXd::Zero(output_dim_)); 
+    previous_inputs_.resize(m_, VectorXd::Zero(input_dim_));
+
+    A_ = MatrixXd::Zero(output_dim_, output_dim_*n_);
+    x_ = VectorXd(output_dim_ * n_);
+
+    Bc_ = MatrixXd::Zero(output_dim_, input_dim_);
+
+    if(!no_input_history){
+        Bp_ = MatrixXd::Zero(output_dim_, input_dim_ * (m_-1));
+        up_ = VectorXd(input_dim_ * (m_-1));
+    }
+
 }
 
 void SelfTuningRegulator::start(){
@@ -61,31 +82,25 @@ void SelfTuningRegulator::start(){
 
 void SelfTuningRegulator::construct_phi() {
 
-    // std::cout << "phi_ size: " << phi_.size() << std::endl;
-    // std::cout << "Phi_ size: " << Phi_.rows() << "x" << Phi_.cols() << std::endl;
-    // std::cout << "phi_dim_: " << phi_dim_ << ", output_dim_: " << output_dim_ << std::endl;
-    
-    for (int i=0; i < previous_outputs_.size(); i++){
+    for (uint i=0; i < previous_outputs_.size(); i++){
     phi_.segment(i*output_dim_, output_dim_) = previous_outputs_[i];
     }
-    for (int j=0; j < previous_inputs_.size(); j++){
+    for (uint j=0; j < previous_inputs_.size(); j++){
     phi_.segment(n_*output_dim_ + j*input_dim_, input_dim_) = previous_inputs_[j];
     }
-
-    for (int k=0; k < output_dim_; k++){
+    for (uint k=0; k < output_dim_; k++){
         Phi_.row(k).segment(k*phi_dim_, phi_dim_) = phi_.transpose();
     }
+    std::cout << "Phi Matrix:" << Phi_ << "\n \n";
 }
 
 void SelfTuningRegulator::update(VectorXd desired)
 {
-    std::cout << "Updating L, for the: " << step_count_ << "th time step"<< std::endl;
     MatrixXd L_den = MatrixXd::Identity(output_dim_,output_dim_) * lambda_ + Phi_ * P_ * Phi_.transpose();
     L_ = (P_ * Phi_.transpose() ) * L_den.inverse();
     // L_ = (P_ * Phi_.transpose()) * L_den.completeOrthogonalDecomposition().pseudoInverse();
     // L_ = (P_ * Phi_.transpose()) * L_den.ldlt().solve(MatrixXd::Identity(output_dim_, output_dim_));
     
-    std::cout << "Updating Theta, for the: " << step_count_ << "th time step"<< std::endl;
     Theta_ = Theta_ + L_ * (desired - Phi_ * Theta_);
     
     double dLimit=0.95;
@@ -94,7 +109,8 @@ void SelfTuningRegulator::update(VectorXd desired)
         Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
     }
 
-    std::cout << "Updating P, for the: " << step_count_ << "th time step" << std::endl;
+    std::cout << "Theta Vector:" << Theta_ << "\n";
+
     P_ = (MatrixXd::Identity(system_dim_, system_dim_) - (L_ * Phi_)) * P_ / lambda_;
 
 	for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
@@ -128,7 +144,6 @@ void SelfTuningRegulator::update(VectorXd desired)
 void SelfTuningRegulator::estimate(){
 
     int idx(0);
-    std::cout << "Constructing x, for the: " << step_count_ << "th time step"<< std::endl;
     for (VectorXd i : previous_outputs_){
         x_.segment(idx*output_dim_, output_dim_) = i; 
         idx++;
@@ -136,7 +151,6 @@ void SelfTuningRegulator::estimate(){
 
     idx = 0;
     if (!no_input_history){
-        std::cout << "Constructing up, for the: " << step_count_ << "th time step"<< std::endl;
         for(VectorXd j : previous_inputs_){
             if (j == previous_inputs_.back()) {continue;}
             up_.segment(idx*input_dim_, input_dim_) = j;
@@ -144,13 +158,9 @@ void SelfTuningRegulator::estimate(){
         }
     }
     
-    std::cout << "Constructing A, Bc, Bp, for the: " << step_count_ << "th time step"<< std::endl;
     for(int i = 0; i < output_dim_; i++) {
-
-        std::cout << "Building A now! \n";
         A_.row(i) = Theta_.segment((i * phi_dim_), output_dim_ * n_).transpose();
 
-        std::cout << "Building Bc now! \n";
         Bc_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_ * n_)), input_dim_).transpose();
 
         if (!no_input_history){
@@ -159,7 +169,6 @@ void SelfTuningRegulator::estimate(){
         } 
 
     }
-    std::cout << "Built all matrices, moving on... \n";
 }
 
 
@@ -185,27 +194,21 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
     } else{
         std::cout << "Using estimated parameters to calculate control effort! \n";
         estimate();
-        std::cout << "Parameters estimated, for the :" << step_count_ << "'s time step" << std::endl;
         
         std::cout << "If it fails now, we got an inverse error" << std::endl;
-        MatrixXd Bc_inverse =  Bc_.inverse();
-        // MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
-        std::cout << "We obtained Bc_inv" << std::endl;
-
         if (no_input_history)
         {
             double Bc_temp = std::max(Bc_(0,0),0.001);
             double Bc_inv = 1.0 / Bc_temp;
             u_c = u_c + Bc_inv * (desired - A_ * x_);
-
         } else{
+            MatrixXd Bc_inverse =  Bc_.inverse();
+            // MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
             u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
         }
-
         std::cout << "We computed u_c = " << u_c << " moving on..." << std::endl;
     }
 
-    std::cout << "Running update now, for the :" << step_count_ << "'s time step" << std::endl;
     update(desired);
     step_count_++;
 

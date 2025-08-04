@@ -29,7 +29,14 @@ def generate_launch_description():
         description='Forgetting Factor for Self Tuning Regulator'
     )
 
+    desired_angle_arg = DeclareLaunchArgument(
+        'desired_angle',
+        default_value='0.0',
+        description='Desired angle for the pendulum to stabilize on'
+    )
+
     forgetting_factor = LaunchConfiguration('forgetting_factor')
+    desired_angle = LaunchConfiguration('desired_angle')
 
     urdf_pub = Node(
         package='robot_state_publisher',
@@ -105,12 +112,13 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'forgetting_factor': forgetting_factor,
+            'desired_angle': desired_angle,
         }]
     )
 
     delay_str = TimerAction(
         period=11.0,
-        actions=[forgetting_factor_arg, str_node]
+        actions=[forgetting_factor_arg, desired_angle_arg, str_node]
     )
 
     ld = LaunchDescription()
