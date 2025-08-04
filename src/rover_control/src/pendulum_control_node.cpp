@@ -7,6 +7,9 @@
 #include <array>
 #include <memory>
 #include <Eigen/Dense>
+#include <algorithm>
+
+#define CLAMP_TORQUE (double) 200.0
 
 using namespace std::chrono_literals;
 
@@ -25,13 +28,13 @@ class PendulumControlNode : public rclcpp::Node
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            controller_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::controlPendulum, this));
+            controller_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumControlNode::controlPendulum, this));
 
             covariance_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/covarianceMatrix", 10);
             covariance_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishCov, this));
 
             parameters_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/parameters", 10);
-            parameters_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishTheta, this));
+            parameters_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::publishTheta, this));
 
             controller_ = std::make_unique<SelfTuningRegulator>();
 
@@ -71,8 +74,8 @@ class PendulumControlNode : public rclcpp::Node
 	    //  RCLCPP_INFO(this->g   et_logger(), "Commanding torque: %d", control_effort(0,0));
 
 	    
-            float input = std::clamp(control_effort(0,0), -5.0, 5.0);
-            //float input = control_effort(0,0);
+            float input = std::clamp(control_effort(0,0), -CLAMP_TORQUE, CLAMP_TORQUE);
+	    //            float input = control_effort(0,0);
             prev_input_(0,0) =  input;
 
             std_msgs::msg::Float64MultiArray command;
@@ -89,11 +92,14 @@ class PendulumControlNode : public rclcpp::Node
         }
 
         void publishTheta(){
-            VectorXd theta = controller_->get_theta_parameters();
+	  //            VectorXd theta = controller_->update(desired_state_);
+	    controller_->update(desired_state_);
+	    /*
             std_msgs::msg::Float64MultiArray parameters;
             
             parameters.data.assign(theta.data(), theta.data() + theta.size());
 	        parameters_pub_->publish(parameters);
+	    */
         }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
