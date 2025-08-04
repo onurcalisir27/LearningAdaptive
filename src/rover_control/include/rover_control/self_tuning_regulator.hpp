@@ -1,8 +1,8 @@
 #ifndef SELF_TUNING_REGULATOR_HPP
 #define SELF_TUNING_REGULATOR_HPP
 
-#include <memory>
-#include <string>
+// #include <memory>
+// #include <string>
 #include <cmath>
 
 #include <deque>
@@ -44,7 +44,7 @@ class SelfTuningRegulator{
         uint system_dim_, phi_dim_, output_dim_, input_dim_;
         double lambda_, initial_covariance_;
         bool initialized_;
-        int step_count_;
+        uint step_count_;
         bool no_input_history;
 
         // System ID params

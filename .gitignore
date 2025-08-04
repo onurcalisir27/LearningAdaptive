@@ -11,3 +11,5 @@ src/rover_sim/.vscode
 .obsidian/
 
 
+src/.cache
+src/compile_commands.json

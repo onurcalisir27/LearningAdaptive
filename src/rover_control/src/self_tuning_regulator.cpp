@@ -1,6 +1,6 @@
 #include "rover_control/self_tuning_regulator.hpp"
 #include <iostream>
-#include <cstdint>
+// #include <cstdint>
 #include <Eigen/Dense>
 #include <algorithm>
 
@@ -126,9 +126,8 @@ void SelfTuningRegulator::update(VectorXd desired)
         {
           fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
 	  continue;
-	}
-        else
-        {
+	}else
+    {
 #ifdef CLAMP_COVARIANCE     
           P_(iLoop1,iLoop2)=std::clamp(P_(iLoop1,iLoop2), 0.0, dLimitOffDiagonal);
 #endif // CLAMP_COVARIANCE     
