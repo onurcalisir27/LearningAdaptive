@@ -15,6 +15,9 @@ class PendulumControlNode : public rclcpp::Node
     public:
         PendulumControlNode() : Node("pendulum_control_node"){
 
+            this->declare_parameter("forgetting_factor", 0.98);
+            lambda_ = this->get_parameter("forgetting_factor").as_double();
+            
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
@@ -34,7 +37,6 @@ class PendulumControlNode : public rclcpp::Node
             input_dim_ = 1;             // torque
             output_dim_ = 1;            // angle
 
-            lambda_ = 0.8;
             double init_cov = 1000.0;   // Start with large initial covariance
 	    
 	        prev_input_ = VectorXd::Zero(input_dim_);

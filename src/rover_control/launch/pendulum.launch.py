@@ -7,6 +7,8 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('rover_control')
@@ -20,6 +22,14 @@ def generate_launch_description():
         ),
         'use_sim_time': True
     }
+
+    forgetting_factor_arg = DeclareLaunchArgument(
+        'lambda',
+        default_value='0.98',
+        description='Forgetting Factor for Self Tuning Regulator'
+    )
+
+    forgetting_factor = LaunchConfiguration('forgetting_factor')
 
     urdf_pub = Node(
         package='robot_state_publisher',
@@ -92,12 +102,15 @@ def generate_launch_description():
     str_node = Node(
         package='rover_control',
         executable='pendulum_control_node',
-        output='screen'
+        output='screen',
+        parameters=[{
+            'forgetting_factor': forgetting_factor,
+        }]
     )
 
     delay_str = TimerAction(
         period=11.0,
-        actions=[str_node]
+        actions=[forgetting_factor_arg, str_node]
     )
 
     ld = LaunchDescription()
