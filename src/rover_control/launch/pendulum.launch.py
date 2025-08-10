@@ -12,8 +12,8 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('rover_control')
-    urdf_file = os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')   
-    world_file = os.path.join(pkg_share, 'worlds', 'test.sdf');                                
+    urdf_file = os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')
+    world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
     robot_description = Command(['xacro ', urdf_file])
     params = {
         'robot_description': ParameterValue(
@@ -22,7 +22,6 @@ def generate_launch_description():
         ),
         'use_sim_time': True
     }
-
     forgetting_factor_arg = DeclareLaunchArgument(
         'lambda',
         default_value='0.98',
@@ -75,12 +74,12 @@ def generate_launch_description():
         executable='spawner',
         arguments=['pendulum_controller', '--controller-manager', '/controller_manager'],
         output='screen')
-    
+
     delay_controller = TimerAction(
         period=3.0,
         actions=[controller]
     )
-    
+
     joints = Node(
         package='controller_manager',
         executable='spawner',
@@ -131,5 +130,3 @@ def generate_launch_description():
     ld.add_action(delay_str)
 
     return ld
-
-

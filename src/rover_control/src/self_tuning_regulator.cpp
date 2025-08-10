@@ -1,6 +1,9 @@
 #include "rover_control/self_tuning_regulator.hpp"
 #include <iostream>
+<<<<<<< HEAD
 // #include <cstdint>
+=======
+>>>>>>> main
 #include <Eigen/Dense>
 #include <algorithm>
 
@@ -169,7 +172,6 @@ void SelfTuningRegulator::estimate(){
 
     }
 }
-
 
 VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& current, VectorXd& prev_input){
 

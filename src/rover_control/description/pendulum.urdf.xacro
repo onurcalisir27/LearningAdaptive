@@ -55,9 +55,10 @@
     </collision>
     
     <inertial>
+<!-- Using an aluminium bar as the pendulum link \rho=2.7 g/cm^3-->
       <origin xyz="0 0 0.5" rpy="0 0 0"/>
-      <mass value="0.5"/>
-      <inertia ixx="0.958333333" iyy="0.958333333" izz="0.000208333"
+      <mass value="6.7"/>
+      <inertia ixx="2.23333" iyy="2.23333" izz="0.57229167"
                ixy="0" ixz="0" iyz="0"/>
     </inertial>
   </link>

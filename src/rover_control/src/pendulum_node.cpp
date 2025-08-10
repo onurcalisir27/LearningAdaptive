@@ -1,10 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
-#include "rover_control/self_tuning_regulator.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 
-#include <chrono>
-#include <array>
 #include <memory>
 #include <Eigen/Dense>
 #include <algorithm>
@@ -12,6 +9,8 @@
 #define CLAMP_TORQUE (double) 200.0
 
 using namespace std::chrono_literals;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 class PendulumControlNode : public rclcpp::Node
 {
@@ -24,7 +23,6 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("desired_angle", 0.0);
             double desired_angle = this->get_parameter("desired_angle").as_double();
 
-
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
@@ -36,24 +34,15 @@ class PendulumControlNode : public rclcpp::Node
             parameters_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/parameters", 10);
             parameters_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::publishTheta, this));
 
-            controller_ = std::make_unique<SelfTuningRegulator>();
-
             input_history_order_ = 1;
             output_history_order_ = 2;
 
-            input_dim_ = 1;             // torque
-            output_dim_ = 1;            // angle
+            double init_cov = 10000.0;   // Start with large initial covariance
 
-            double init_cov = 1000.0;   // Start with large initial covariance
+	        prev_input_ = VectorXd::Zero(1);
+	        current_state_ = VectorXd::Zero(2);
 
-	        prev_input_ = VectorXd::Zero(input_dim_);
-	        current_state_ = VectorXd::Zero(output_dim_);
-
-            controller_->init(output_history_order_, input_history_order_, input_dim_, output_dim_, lambda_, init_cov);
-            controller_->start();
-
-            // desired_state_ = VectorXd::Zero(output_dim_);
-            desired_state_ = VectorXd::Ones(output_dim_) * desired_angle;
+            desired_state_ = VectorXd::Ones(2) * desired_angle;
         }
 
     private:
@@ -64,15 +53,9 @@ class PendulumControlNode : public rclcpp::Node
             //     current_state_.segment(i*output_dim_, 2) << msg->position[i];
             // }
             current_state_(0,0) = msg->position[0];
-            // RCLCPP_INFO(this->get_logger(), "The current state is: ", current_state_);
-
         }
 
         void controlPendulum(){
-
-            VectorXd control_effort = controller_->computeControl(desired_state_, current_state_, prev_input_);
-	    //  RCLCPP_INFO(this->g   et_logger(), "Commanding torque: %d", control_effort(0,0));
-
 
             float input = std::clamp(control_effort(0,0), -CLAMP_TORQUE, CLAMP_TORQUE);
 	    //            float input = control_effort(0,0);
@@ -118,7 +101,6 @@ class PendulumControlNode : public rclcpp::Node
         VectorXd desired_state_;
 
         int input_history_order_, output_history_order_;
-        int system_dim_, phi_dim_, output_dim_, input_dim_;
         double lambda_;
 };
 
