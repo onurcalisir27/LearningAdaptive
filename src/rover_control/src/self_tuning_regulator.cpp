@@ -1,6 +1,5 @@
 #include "rover_control/self_tuning_regulator.hpp"
 #include <iostream>
-#include <cstdint>
 #include <Eigen/Dense>
 #include <algorithm>
 
@@ -8,7 +7,6 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 #define CLAMP_COVARIANCE
-#define CLAMP_PARAMETERS
 
 void SelfTuningRegulator::init(int n, int m, int input_dim, int output_dim, double lambda, double init_cov){
 
@@ -104,19 +102,11 @@ void SelfTuningRegulator::update(VectorXd desired)
     
     Theta_ = Theta_ + L_ * (desired - Phi_ * Theta_);
     
-#ifdef CLAMP_PARAMETERS
-    for (int iLoop=n_; iLoop<n_+m_; iLoop++)
-    {
-      double dLimit=0.98;
-      Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
-    }
-#else // CLAMP_PARAMETERS
     double dLimit=0.95;
     for (int iLoop= output_dim_*n_; iLoop < phi_dim_; iLoop++)
     {
         Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
     }
-#endif // CLAMP_PARAMETERS
 
     std::cout << "Theta Vector:" << Theta_ << "\n";
 
@@ -125,10 +115,9 @@ void SelfTuningRegulator::update(VectorXd desired)
 	for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
 	{
       double dLimitDiagonal=10000.0;
-      double dLimitDiagonalMin=1.0;
       double dLimitOffDiagonal=100.0;
 #ifdef CLAMP_COVARIANCE     
-      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), dLimitDiagonalMin, dLimitDiagonal);
+      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 0.0, dLimitDiagonal);
 #endif // CLAMP_COVARIANCE     
       for (int iLoop2=0; iLoop2<system_dim_; iLoop2++)
       {
@@ -136,9 +125,8 @@ void SelfTuningRegulator::update(VectorXd desired)
         {
           fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
 	  continue;
-	}
-        else
-        {
+	}else
+    {
 #ifdef CLAMP_COVARIANCE     
           P_(iLoop1,iLoop2)=std::clamp(P_(iLoop1,iLoop2), 0.0, dLimitOffDiagonal);
 #endif // CLAMP_COVARIANCE     
@@ -181,7 +169,6 @@ void SelfTuningRegulator::estimate(){
     }
 }
 
-
 VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& current, VectorXd& prev_input){
 
     if(desired.size() != output_dim_ || current.size() != output_dim_ || prev_input.size() != input_dim_){
@@ -190,7 +177,7 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
     }
 
     VectorXd u_c = VectorXd::Random(input_dim_) * 0.05;
-    //VectorXd u_c = VectorXd::Zero(input_dim_);
+    // VectorXd u_c = VectorXd::Zero(input_dim_);
 
     previous_outputs_.push_front(current);
     previous_inputs_.push_front(prev_input);
@@ -208,8 +195,7 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
         std::cout << "If it fails now, we got an inverse error" << std::endl;
         if (no_input_history)
         {
-	  //            double Bc_temp = std::max(Bc_(0,0),0.001);
-            double Bc_temp = Bc_(0,0);
+            double Bc_temp = std::max(Bc_(0,0),0.001);
             double Bc_inv = 1.0 / Bc_temp;
             u_c = u_c + Bc_inv * (desired - A_ * x_);
         } else{
@@ -217,12 +203,10 @@ VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& curren
             // MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
             u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
         }
-        std::cout << "We computed u_c = " << u_c << " desired: " << desired << " moving on..." << std::endl;
-        std::cout << "A Matrix = " << A_ << std::endl << std::endl;
-        std::cout << "B Matrix = " << Bc_ << std::endl << std::endl;
+        std::cout << "We computed u_c = " << u_c << " moving on..." << std::endl;
     }
 
-    //    update(desired);
+    update(desired);
     step_count_++;
 
     return u_c;
