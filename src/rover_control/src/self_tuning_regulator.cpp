@@ -1,9 +1,6 @@
 #include "rover_control/self_tuning_regulator.hpp"
 #include <iostream>
-<<<<<<< HEAD
 // #include <cstdint>
-=======
->>>>>>> main
 #include <Eigen/Dense>
 #include <algorithm>
 

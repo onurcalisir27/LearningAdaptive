@@ -24,7 +24,6 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("desired_angle", 0.0);
             double desired_angle = this->get_parameter("desired_angle").as_double();
 
-
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);

@@ -17,3 +17,4 @@ src/compile_commands.json
 .cache/
 .clangd
 .ropeproject/
+compile_commands.json

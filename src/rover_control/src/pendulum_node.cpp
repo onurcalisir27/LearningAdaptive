@@ -2,112 +2,136 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 
+#include <cstdlib>
 #include <memory>
 #include <Eigen/Dense>
-#include <algorithm>
-
-#define CLAMP_TORQUE (double) 200.0
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std::chrono_literals;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-class PendulumControlNode : public rclcpp::Node
+class PendulumNode : public rclcpp::Node
 {
     public:
-        PendulumControlNode() : Node("pendulum_control_node"){
+        PendulumNode() : Node("pendulum_node"){
 
             this->declare_parameter("forgetting_factor", 0.98);
             lambda_ = this->get_parameter("forgetting_factor").as_double();
 
             this->declare_parameter("desired_angle", 0.0);
-            double desired_angle = this->get_parameter("desired_angle").as_double();
+            desired_state_ = this->get_parameter("desired_angle").as_double();
 
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-                "/joint_states", 10, std::bind(&PendulumControlNode::get_feedback, this, std::placeholders::_1));
-            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            controller_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumControlNode::controlPendulum, this));
+                "/joint_states", 10, std::bind(&PendulumNode::get_joint_states, this, std::placeholders::_1));
 
-            covariance_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/covarianceMatrix", 10);
-            covariance_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumControlNode::publishCov, this));
+            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("pendulum_controller/commands",50);
 
-            parameters_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/parameters", 10);
-            parameters_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::publishTheta, this));
+            control_timer_ = this->create_wall_timer(50ms, std::bind(&PendulumNode::controlPendulum, this));
+            update_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumNode::updatePendulum, this));
+            srand(time(0));
 
-            input_history_order_ = 1;
-            output_history_order_ = 2;
+            limit = 250.0;
+            n_ = 2;
+            m_ = 1;
+            nm_ = n_ + m_;
 
-            double init_cov = 10000.0;   // Start with large initial covariance
+            A = VectorXd::Zero(n_);
+            B = 0.0;
+            Theta = VectorXd::Random(nm_);
+            Phi = VectorXd::Zero(nm_);
+            L = VectorXd::Zero(nm_);
+            P = MatrixXd::Identity(nm_, nm_) * 10000;
 
-	        prev_input_ = VectorXd::Zero(1);
-	        current_state_ = VectorXd::Zero(2);
-
-            desired_state_ = VectorXd::Ones(2) * desired_angle;
-        }
+            current_state_ = VectorXd::Zero(n_);
+            previous = 0.0;
+            prev_previous = 0.0;
+            prev_input_ = 0.0;
+    }
 
     private:
 
-        void get_feedback(const sensor_msgs::msg::JointState::SharedPtr msg){
+        void get_joint_states(const sensor_msgs::msg::JointState::SharedPtr msg){
 
-            // for(size_t i=0; i < msg->name.size(); i++){
-            //     current_state_.segment(i*output_dim_, 2) << msg->position[i];
-            // }
-            current_state_(0,0) = msg->position[0];
+            double current = msg->position[0];
+            current_state_ << current, previous;
+            Phi << previous, prev_previous, prev_input_;
+
+            // Construct the Phi Vector
+            // std::cout << "Your Phi Vector: " <<  Phi << std::endl;
+            prev_previous = previous;
+            previous = current;
         }
 
         void controlPendulum(){
 
-            float input = std::clamp(control_effort(0,0), -CLAMP_TORQUE, CLAMP_TORQUE);
-	    //            float input = control_effort(0,0);
-            prev_input_(0,0) =  input;
+            // double input = (double)rand() / RAND_MAX * 0.005;
+            // std::cout << "Random noisy input is: " << input << std::endl;
+            A  = Theta.segment(0, 2);
+            // std::cout << "A is: " << A << std::endl;
+            B = Theta(2);
+            // std::cout << "B is: " << B << std::endl;
+
+            double error = desired_state_ - (A.transpose() * current_state_)(0);
+            std::cout << "Computed error: " << error << std::endl;
+
+            double input = error / B;
+            std::cout << "Input Computed: " << input << std::endl;
+            input = std::clamp(input, -limit, limit);
+            prev_input_ = input;
 
             std_msgs::msg::Float64MultiArray command;
             command.data = {input};
             torque_pub_->publish(command);
         }
 
-        void publishCov(){
-            MatrixXd covMat = controller_->get_covariance_matrix();
-            std_msgs::msg::Float64MultiArray covariance;
+        void updatePendulum(){
 
-            covariance.data.assign(covMat.data(), covMat.data() + covMat.size());
-            covariance_pub_->publish(covariance);
-        }
+            // Phi << angles_.front(), angles_.back(), prev_input_;
+            Theta = Theta + L * (current_state_(0) - Phi.transpose() * Theta);
+            // std::cout << "Your Theta is: " << Theta << std::endl;
 
-        void publishTheta(){
-	  //            VectorXd theta = controller_->update(desired_state_);
-	    controller_->update(desired_state_);
-	    /*
-            std_msgs::msg::Float64MultiArray parameters;
+            double L_den = lambda_ + (Phi.transpose() * P * Phi)(0,0);
+            L = P * Phi / L_den;
+            std::cout << "L Gain Vector: " << L << std::endl;
 
-            parameters.data.assign(theta.data(), theta.data() + theta.size());
-	        parameters_pub_->publish(parameters);
-	    */
-        }
+            // P = (MatrixXd::Identity(3,3) - L * Phi.transpose()) * P / lambda_;
+            P = (P - L * Phi.transpose() * P) / lambda_;
+
+            std::cout << "Covariance MAtrix: \n " << P << "\n\n";
+
+       }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr covariance_pub_;
-        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr parameters_pub_;
 
-        rclcpp::TimerBase::SharedPtr controller_timer_;
-        rclcpp::TimerBase::SharedPtr covariance_timer_;
-        rclcpp::TimerBase::SharedPtr parameters_timer_;
-
-        std::unique_ptr<SelfTuningRegulator> controller_;
+        rclcpp::TimerBase::SharedPtr control_timer_;
+        rclcpp::TimerBase::SharedPtr update_timer_;
 
         VectorXd current_state_;
-        VectorXd prev_input_;
-        VectorXd desired_state_;
+        double prev_input_;
+        double desired_state_;
 
-        int input_history_order_, output_history_order_;
+        VectorXd A;
+        double B;
+        MatrixXd P;
+
+        VectorXd Theta;
+        VectorXd Phi;
+        VectorXd L;
+        uint n_, m_, nm_;
         double lambda_;
-};
+        double limit;
+        double previous;
+        double prev_previous;
 
+};
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<PendulumControlNode>());
+  rclcpp::spin(std::make_shared<PendulumNode>());
   rclcpp::shutdown();
   return 0;
 }
