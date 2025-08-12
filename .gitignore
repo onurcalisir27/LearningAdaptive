@@ -9,5 +9,8 @@ src/rover_control/.vscode
 src/rover_sim/.vscode
 
 .obsidian/
-
+.cache/
+.ropeproject/
+compile_commands.json
+src/.cache/
 
