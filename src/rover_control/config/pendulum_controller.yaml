@@ -1,10 +1,10 @@
 controller_manager:
   ros__parameters:
-    update_rate: 100
-    
+    update_rate: 20
+
     pendulum_controller:
       type: effort_controllers/JointGroupEffortController
-    
+
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 

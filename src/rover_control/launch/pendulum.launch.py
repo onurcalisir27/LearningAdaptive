@@ -107,7 +107,7 @@ def generate_launch_description():
 
     str_node = Node(
         package='rover_control',
-        executable='pendulum_control_node',
+        executable='pendulum_node',
         output='screen',
         parameters=[{
             'forgetting_factor': forgetting_factor,
@@ -116,7 +116,7 @@ def generate_launch_description():
     )
 
     delay_str = TimerAction(
-        period=11.0,
+        period=12.0,
         actions=[forgetting_factor_arg, desired_angle_arg, str_node]
     )
 

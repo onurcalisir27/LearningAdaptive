@@ -14,3 +14,10 @@ src/rover_sim/.vscode
 compile_commands.json
 src/.cache/
 
+src/.cache
+src/compile_commands.json
+
+.cache/
+.clangd
+.ropeproject/
+compile_commands.json
