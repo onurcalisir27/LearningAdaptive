@@ -28,6 +28,7 @@ class PendulumNode : public rclcpp::Node
                 "/joint_states", 10, std::bind(&PendulumNode::get_joint_states, this, std::placeholders::_1));
 
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("pendulum_controller/commands",50);
+            metrics_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("metrics",10);
 
             control_timer_ = this->create_wall_timer(50ms, std::bind(&PendulumNode::controlPendulum, this));
             update_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumNode::updatePendulum, this));
@@ -85,6 +86,11 @@ class PendulumNode : public rclcpp::Node
             std_msgs::msg::Float64MultiArray command;
             command.data = {input};
             torque_pub_->publish(command);
+
+            double measurement_error = desired_state_ - current_state_(0);
+            std_msgs::msg::Float64MultiArray metrics;
+            metrics.data = {desired_state_, current_state_(0), error, measurement_error};
+            metrics_pub_->publish(metrics);
         }
 
         void updatePendulum(){
@@ -106,6 +112,7 @@ class PendulumNode : public rclcpp::Node
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
+        rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr metrics_pub_;
 
         rclcpp::TimerBase::SharedPtr control_timer_;
         rclcpp::TimerBase::SharedPtr update_timer_;
