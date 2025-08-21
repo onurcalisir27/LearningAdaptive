@@ -1,13 +1,24 @@
-# Learning Adaptive Control for Autonomous Navigation 
+# Learning Adaptive Control for Autonomous Navigation
 
 This repository contains the `Robot Operating System 2 (ROS2)` packages that are implementing adaptive controller plugins for autonomous driving to a mobile 4 wheeled differential drive robot rover.
+
+## Introduction
+This research project implements learning-adaptive control strategies for autonomous mobile robots
+in repetitive environments, supervised by Dr. Homayoon Beigi at Columbia's Nonlinear Adaptive Control
+Research Lab. The custom-built differential drive AMR features a distributed
+architecture with dual Raspberry Pi units—Pi4 handling hardware control through a custom ROS2 Control plugin and sensor management,
+while Pi5 executes motion planning via a specialized Nav2 controller plugin that implements the learning-adaptive algorithm.
+
+The learning controller enables the robot to improve performance through repetition, compensating for recurring errors and significantly reducing tracking errors in daily operations.
+This approach is particularly valuable for AMRs in warehouses, manufacturing facilities, or delivery systems where robots follow similar routes repeatedly, allowing them to optimize their
+control strategies and achieve superior trajectory tracking performance over time.
 
 ## Packages
 
 Currently three `ROS2` packages are present under the *src/* directory,
 - **rover_hardware**: this package handles the hardware level driver code for the autonomous rover, including low-level DC motor control through PWM, RGB-D camera control, and IMU processing. This package meant to be deployed on the Raspberry Pi 4 of the autonomous rover.
 - **rover_control**: this package handles the autonomous control from adaptive controllers present in the research scope. This package is meant to offer new controller and planner plugins for `Nav2`, for high compatibility with the rest of the autonomous robotics community. Find more on `Nav2` under [->docs/Nav2ArchitectureAnalysis.md]. This package is prepared to be deployed on the Raspberry Pi 5 of the autonomous rover.
-- **rover_sim**: this package provides a realistic simulated environment for the autonomous rover algorithms to be tested on, using the `ROS2` simulator `Gazebo`. This package provides you with a fully set up sim environment for you to test different controller algorithms using the `navigation.yaml` file. 
+- **rover_sim**: this package provides a realistic simulated environment for the autonomous rover algorithms to be tested on, using the `ROS2` simulator `Gazebo`. This package provides you with a fully set up sim environment for you to test different controller algorithms using the `navigation.yaml` file.
 
 Each package contains multiple executable launch files, prepared with accordance to `ROS2` standards using 'launch.py' format. Please find a list of executable's you can run below, and their functionality to the project.
 
@@ -17,7 +28,7 @@ $ ros2 launch <package_name> <executable.launch.py>
 ```
 
 ## Scripts
-Before executing your code, make sure you compiled and built your environment. 
+Before executing your code, make sure you compiled and built your environment.
 Don't forget to install `ROS2` beforehand if you haven't. We provide some useful scripts under */scripts* directory. Below is example usage for a few:
 ```bash
 $ cd scripts
@@ -81,7 +92,7 @@ $ ros2 launch rover_sim robot_display.launch.py
 # Starts the Gazebo Simulation with ros2control to get the robot ready to listen for velocity commands from the controller
 $ ros2 launch rover_sim simulation.launch.py
 
-# Starts the SLAM toolbox Mapping to make a grid map of the gazebo world using a simulated LiDAR 
+# Starts the SLAM toolbox Mapping to make a grid map of the gazebo world using a simulated LiDAR
 $ ros2 launch rover_sim slam_mapping.launch.py
 
 # Starts the RTAB mapping to make a pointcloud map of the gazebo world using a simulated RGB-D camera
