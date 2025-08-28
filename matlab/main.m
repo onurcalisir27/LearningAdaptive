@@ -1,0 +1,166 @@
+clear; clc; close all;
+
+%% Robot Parameters
+L1 = 1.0;
+m1 = 5.0;
+q0 = 0.0;
+robot = Robot([L1], [m1], [q0]);
+
+%% Controller Parameters
+
+% Desired Angle
+goal_angle = pi+0.75;
+
+% Parameters to Tune
+% lambda = 0.92;            
+lambda = 0.75; 
+max_torque = 20.0; % [Nm]
+% max_torque = 25.0; % [Nm]
+initial_covariance = 100000;
+param_update_freq = 20;      % Update parameters less frequently
+system_estimate_freq = 4;    % Update system matrices more frequently
+
+% One Link Pendulum
+num_joints = 1;
+input_history_dim = 1;     
+output_history_dim = 2;      
+goal_state = [goal_angle];
+controller = SelfTuningRegulator(num_joints, input_history_dim, output_history_dim, ...
+                                     lambda, goal_state, initial_covariance, ...
+                                     param_update_freq, system_estimate_freq);
+controller.setRobot(robot);
+
+%% Simulation Parameters
+dt = 0.01;
+T_sim = 50.0;
+N_steps = round(T_sim / dt);
+
+q = q0;
+q_dot = 0.0;
+tau = 0.0;
+
+% Storage
+q_trajectory = zeros(1, N_steps);
+q_dot_trajectory = zeros(1, N_steps);
+tau_trajectory = zeros(1, N_steps);
+time = zeros(1, N_steps);
+
+fprintf('\nStarting simulation...\n');
+%% Run Simulation
+tic;
+for i = 1:N_steps
+    % Store current state
+    q_trajectory(1, i) = q;
+    q_dot_trajectory(1, i) = q_dot;
+    tau_trajectory(1, i) = tau;
+    time(i) = (i-1) * dt;
+    
+    % Update robot state
+    robot.setJointAngle(q);
+    
+    % Compute torque
+    try
+        current_angles = [q];
+        previous_inputs = [tau];
+        
+        tau_new = controller.computeControl(current_angles, previous_inputs);
+        tau = tau_new(1);
+
+        % Limit torque
+        tau = max(-max_torque, min(max_torque, tau));
+        
+    catch ME
+        fprintf('Controller error at step %d: %s\n', i, ME.message);
+        tau = 0;
+    end
+    
+    % Simulate one time step
+    try
+        [q_next, q_dot_next] = robot.simulateStep(q, q_dot, tau, dt);
+        q = q_next;
+        q_dot = q_dot_next;
+        
+        q = wrapTo2Pi(q);
+
+    catch ME
+        fprintf('Simulation error at step %d: %s\n', i, ME.message);
+        break;
+    end
+    
+    % Progress indicator
+    if mod(i, round(N_steps/10)) == 0
+        error_deg = rad2deg(abs(q - goal_angle));
+        fprintf('  Step %d/%d (t=%.2fs), q=%.3f rad (%.1f deg), error=%.1f deg, tau=%.2f Nm\n', ...
+                i, N_steps, time(i), q, rad2deg(q), error_deg, tau);
+    end
+end
+elapsed_time = toc;
+fprintf('Simulation completed in %.2f seconds!\n', elapsed_time);
+
+%% Display Results
+fprintf('\nFinal state:\n');
+fprintf('  q_final = %.3f rad (%.1f deg)\n', q, rad2deg(q));
+fprintf('  q_dot_final = %.3f rad/s\n', q_dot);
+fprintf('  Final error = %.3f rad (%.1f deg)\n', abs(q - goal_angle), rad2deg(abs(q - goal_angle)));
+
+% Performance
+final_error = abs(q - goal_angle);
+settling_time_idx = find(abs(q_trajectory - goal_angle) < 0.1, 1, 'first');
+if ~isempty(settling_time_idx)
+    settling_time = time(settling_time_idx);
+    fprintf('  Settling time (±0.1 rad): %.2f s\n', settling_time);
+else
+    fprintf('  System did not settle within ±0.1 rad\n');
+end
+
+max_torque_used = max(abs(tau_trajectory));
+fprintf('  Maximum torque used: %.2f Nm\n', max_torque_used);
+
+%% Plot Results
+fprintf('\nGenerating plots...\n');
+fig1 = figure('Name', '1-Link Self-Tuning Regulator Results', 'Position', [100, 100, 1200, 800]);
+fprintf('Main results figure created (Figure %d)\n', fig1.Number);
+
+subplot(3,1,1);
+plot(time, rad2deg(q_trajectory), 'b-', 'LineWidth', 2);
+hold on;
+plot(time, rad2deg(goal_angle) * ones(size(time)), 'r--', 'LineWidth', 2);
+grid on;
+xlabel('Time [s]');
+ylabel('Joint Angle [deg]');
+title('1-Link Pendulum - Joint Angle vs Time (Self-Tuning Control)');
+legend('Actual Angle', 'Goal Angle', 'Location', 'best');
+xlim([0, T_sim]);
+
+subplot(3,1,2);
+plot(time, q_dot_trajectory, 'g-', 'LineWidth', 2);
+grid on;
+xlabel('Time [s]');
+ylabel('Joint Velocity [rad/s]');
+title('1-Link Pendulum - Joint Velocity vs Time');
+xlim([0, T_sim]);
+
+subplot(3,1,3);
+plot(time, tau_trajectory, 'm-', 'LineWidth', 2);
+grid on;
+xlabel('Time [s]');
+ylabel('Control Torque [Nm]');
+title('1-Link Pendulum - Control Effort vs Time');
+xlim([0, T_sim]);
+
+%% Animation
+fprintf('\nStarting controlled animation...\n')
+
+% Add goal state as target for animation
+target_angles = [goal_angle];
+robot.animate(q_trajectory, target_angles);
+fprintf('Controlled animation completed successfully!\n');
+
+% Debug info
+fprintf('Trajectory stats:\n');
+fprintf('  Size: %dx%d\n', size(q_trajectory));
+fprintf('  Min angle: %.3f rad (%.1f deg)\n', min(q_trajectory), rad2deg(min(q_trajectory)));
+fprintf('  Max angle: %.3f rad (%.1f deg)\n', max(q_trajectory), rad2deg(max(q_trajectory)));
+fprintf('  Final error: %.3f rad (%.1f deg)\n', final_error, rad2deg(final_error));
+
+fprintf('Self-tuning control test completed.\n');
