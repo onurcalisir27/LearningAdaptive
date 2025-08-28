@@ -23,14 +23,11 @@ classdef SelfTuningRegulator < handle
         m_ % output history size
         p; % system dimension
         r; % history dimension     
-        
-        robot_; % Robot reference
-        prev_vel_; % Previous joint velocities
-        
+                
         % Frequency control for parameter updates
-        update_counter_; % Counter for parameter updates
-        update_frequency_; % Update parameters every N steps
-        estimate_frequency_; % Update system matrices every N steps
+        update_counter_;
+        update_frequency_;
+        estimate_frequency_;
 
     end
     
@@ -61,9 +58,6 @@ classdef SelfTuningRegulator < handle
             
             this.update_counter_ = 0;
 
-            % Variable joint robot arm
-            this.robot_ = [];
-
             this.curr_state_ = zeros(this.num_joints_, 1);
             this.prev_state_ = zeros(this.num_joints_*this.n_, 1);
             
@@ -82,10 +76,6 @@ classdef SelfTuningRegulator < handle
             this.B_ = zeros(this.num_joints_, this.num_joints_*this.m_);
 
             fprintf('Self-tuning regulator initialized');
-        end
-        
-        function setRobot(this, robot)
-            this.robot_ = robot;
         end
 
         function update(this)

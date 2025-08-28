@@ -1,11 +1,11 @@
 classdef Robot < handle
-    % N-link Robot Manipulator (1-3 links supported)
+    % N-link Robot Manipulator (1-3 links)
     properties
         Links         % [L1, L2, ..., LN]
         Mass          % [m1, m2, ..., mN]
         Inertia       % [I1, I2, ..., IN]
         g
-        numLinks      % Number of links (1, 2, or 3)
+        numLinks
     end
 
     properties (Access = private)
@@ -19,7 +19,7 @@ classdef Robot < handle
                 error('Link lengths must be specified.');
             end
             
-            % Validate number of links (1-3 supported)
+            % Validate number of links
             numLinks = length(links);
             if numLinks < 1 || numLinks > 3
                 error('Robot supports only 1, 2, or 3 links. Received %d links.', numLinks);
@@ -98,43 +98,40 @@ classdef Robot < handle
             P = subs(P, [L1, L2, L3], links);
 
             % Simplify and evaluate the result
-            T = double(vpa(P)); % Use vpa to handle symbolic numbers before conversion
+            T = double(vpa(P));
         end
 
         %% Position Calculation
-        % Position of the end of Link 1 (first joint)
+        % Position of the end of Link 1
         function posA = calcPosA(this)
             L = this.Links;
             q = this.JointAngle;
             
             if this.numLinks >= 1
-                % Link 1 rotates about Y-axis from vertical (-Z direction)
-                % q1 = 0 means link points straight down (-Z)
-                x = L(1) * sin(q(1));      % X displacement
-                y = 0;                     % Always zero (2D planar motion)
-                z = -L(1) * cos(q(1));     % Z displacement (negative because hanging down)
+                x = L(1) * sin(q(1));
+                y = 0;
+                z = -L(1) * cos(q(1));
                 posA = [x; y; z];
             else
                 posA = [0; 0; 0];
             end
         end
 
-        % Position of the end of Link 2 (second joint)
+        % Position of the end of Link 2
         function posB = calcPosB(this)
             if this.numLinks >= 2
                 L = this.Links;
                 q = this.JointAngle;
 
-                % Get position A (end of link 1)
+                % Get position A
                 posA = this.calcPosA();
                 
-                % Link 2 continues from Link 1 with relative angle q2
                 % Total angle of link 2 from vertical is q1 + q2
-                theta2_abs = q(1) + q(2);  % Absolute angle of link 2 from vertical
+                theta2_abs = q(1) + q(2);
                 
                 x = posA(1) + L(2) * sin(theta2_abs);
-                y = 0;  % Always zero (2D planar motion)
-                z = posA(3) - L(2) * cos(theta2_abs);  % Continue downward motion
+                y = 0;
+                z = posA(3) - L(2) * cos(theta2_abs);
                 
                 posB = [x; y; z];
             else
@@ -142,22 +139,20 @@ classdef Robot < handle
             end
         end
 
-        % Position of the end of Link 3 (end effector)
+        % Position of the end of Link 3
         function posC = calcPosC(this)
             if this.numLinks >= 3
                 L = this.Links;
                 q = this.JointAngle;
 
-                % Get position B (end of link 2)
+                % Get position B
                 posB = this.calcPosB();
-                
-                % Link 3 continues from Link 2 with relative angle q3
-                % Total angle of link 3 from vertical is q1 + q2 + q3
-                theta3_abs = q(1) + q(2) + q(3);  % Absolute angle of link 3 from vertical
+
+                theta3_abs = q(1) + q(2) + q(3);
                 
                 x = posB(1) + L(3) * sin(theta3_abs);
-                y = 0;  % Always zero (2D planar motion)
-                z = posB(3) - L(3) * cos(theta3_abs);  % Continue motion
+                y = 0; 
+                z = posB(3) - L(3) * cos(theta3_abs);
                 
                 posC = [x; y; z];
             else
@@ -165,7 +160,7 @@ classdef Robot < handle
             end
         end
 
-        % Get end effector position based on number of links
+        % Get end effector position
         function posEnd = getEndEffectorPos(this)
             switch this.numLinks
                 case 1
@@ -181,28 +176,24 @@ classdef Robot < handle
 
         %% Jacobian Calculation - Modified for variable links
         function J = calcJacobian(this, q)
-            % Define small perturbation for numeric differentiation
             delta = 1e-6;
 
             % Preallocate Jacobian matrix
             J = zeros(3, length(q));
 
             % Get current end-effector position
-            posEnd = this.getEndEffectorPos(); % Current end-effector position
+            posEnd = this.getEndEffectorPos();
 
-            % Loop through each joint to compute partial derivatives
+            % Loop through each joint
             for i = 1:length(q)
-                % Create perturbed joint angle vector
                 q_perturbed = q;
                 q_perturbed(i) = q_perturbed(i) + delta;
 
                 % Update joint angles
                 this.setJointAngle(q_perturbed);
-
-                % Compute perturbed end-effector position
                 pos_perturbed = this.getEndEffectorPos();
 
-                % Numeric differentiation (finite difference)
+                % Numeric differentiation
                 J(:, i) = (pos_perturbed - posEnd) / delta;
             end
 
@@ -258,7 +249,7 @@ classdef Robot < handle
 
             for i = 1:num_joints
                 % Boundary conditions: positions and velocities
-                B = [q_initial(i); q_final(i); 0; 0]; % Zero velocities at start and end
+                B = [q_initial(i); q_final(i); 0; 0];
 
                 % Solve for polynomial coefficients
                 coeffs = A \ B;
@@ -286,7 +277,7 @@ classdef Robot < handle
 
         %% Robot Dynamics Methods
 
-        % Compute inertia matrix M(q) for 2D planar robot
+        % Compute inertia matrix M(q)
         function M = computeInertiaMatrix(this, q)
             if length(q) ~= this.numLinks
                 error('Joint angles must be a %d-element vector for %d-link robot', this.numLinks, this.numLinks);
@@ -303,26 +294,20 @@ classdef Robot < handle
 
             switch n
                 case 1
-                    % Simple 1-DOF pendulum
                     M(1,1) = I(1) + m(1)*(L(1)/2)^2;
                     
                 case 2
-                    % 2-DOF double pendulum (planar)
                     q2 = q(2);
                     c2 = cos(q2);
-                    
-                    % Standard planar double pendulum mass matrix
                     M(1,1) = m(1)*(L(1)/2)^2 + m(2)*(L(1)^2 + (L(2)/2)^2 + L(1)*L(2)*c2) + I(1) + I(2);
                     M(1,2) = m(2)*(L(2)/2)^2 + m(2)*L(1)*L(2)/2*c2 + I(2);
-                    M(2,1) = M(1,2);  % Symmetric
+                    M(2,1) = M(1,2);
                     M(2,2) = m(2)*(L(2)/2)^2 + I(2);
                     
                 case 3
-                    % 3-DOF triple pendulum (planar)
                     q2 = q(2); q3 = q(3);
                     c2 = cos(q2); c3 = cos(q3); c23 = cos(q2 + q3);
                     
-                    % Standard planar triple pendulum mass matrix
                     M(1,1) = m(1)*(L(1)/2)^2 + m(2)*(L(1)^2 + (L(2)/2)^2 + L(1)*L(2)*c2) + ...
                              m(3)*(L(1)^2 + L(2)^2 + (L(3)/2)^2 + L(1)*L(2)*c2 + L(1)*L(3)*c23 + L(2)*L(3)*c3) + ...
                              I(1) + I(2) + I(3);
@@ -333,17 +318,17 @@ classdef Robot < handle
                              
                     M(1,3) = m(3)*(L(3)/2)^2 + m(3)*L(1)*L(3)/2*c23 + m(3)*L(2)*L(3)/2*c3 + I(3);
                     
-                    M(2,1) = M(1,2);  % Symmetric
+                    M(2,1) = M(1,2);
                     M(2,2) = m(2)*(L(2)/2)^2 + m(3)*(L(2)^2 + (L(3)/2)^2 + L(2)*L(3)*c3) + I(2) + I(3);
                     M(2,3) = m(3)*(L(3)/2)^2 + m(3)*L(2)*L(3)/2*c3 + I(3);
                     
-                    M(3,1) = M(1,3);  % Symmetric
-                    M(3,2) = M(2,3);  % Symmetric
+                    M(3,1) = M(1,3);
+                    M(3,2) = M(2,3);
                     M(3,3) = m(3)*(L(3)/2)^2 + I(3);
             end
         end
 
-        % Compute Coriolis matrix C(q,q_dot) for 2D planar robot
+        % Compute Coriolis matrix C(q,q_dot)
         function C = computeCoriolisMatrix(this, q, q_dot)
             if length(q) ~= this.numLinks || length(q_dot) ~= this.numLinks
                 error('Joint angles and velocities must be %d-element vectors', this.numLinks);
@@ -359,28 +344,23 @@ classdef Robot < handle
 
             switch n
                 case 1
-                    % No Coriolis terms for 1-DOF pendulum
                     C = 0;
                     
                 case 2
-                    % 2-DOF double pendulum (planar)
                     q2 = q(2);
                     dq1 = q_dot(1); dq2 = q_dot(2);
                     s2 = sin(q2);
                     
-                    % Standard planar double pendulum Coriolis terms
                     C(1,1) = 0;
                     C(1,2) = -m(2)*L(1)*L(2)/2*s2*dq2;
                     C(2,1) = m(2)*L(1)*L(2)/2*s2*dq1;
                     C(2,2) = 0;
                     
                 case 3
-                    % 3-DOF triple pendulum (planar)
                     q2 = q(2); q3 = q(3);
                     dq1 = q_dot(1); dq2 = q_dot(2); dq3 = q_dot(3);
                     s2 = sin(q2); s3 = sin(q3); s23 = sin(q2 + q3);
 
-                    % Planar triple pendulum Coriolis terms
                     C(1,1) = 0;
                     C(1,2) = -m(2)*L(1)*L(2)/2*s2*dq2 - m(3)*L(1)*L(2)*s2*dq2 - m(3)*L(1)*L(3)/2*s23*(dq2 + dq3);
                     C(1,3) = -m(3)*L(1)*L(3)/2*s23*(dq2 + dq3) - m(3)*L(2)*L(3)/2*s3*(dq2 + dq3);
@@ -395,7 +375,7 @@ classdef Robot < handle
             end
         end
 
-        % Compute gravity vector G(q) for 2D planar robot
+        % Compute gravity vector G(q)
         function G = computeGravityVector(this, q)
             if length(q) ~= this.numLinks
                 error('Joint angles must be a %d-element vector', this.numLinks);
@@ -406,38 +386,33 @@ classdef Robot < handle
             m = this.Mass;
             n = this.numLinks;
 
-            % Initialize gravity vector
+            % Initialize gravity
             G = zeros(n, 1);
 
             switch n
                 case 1
-                    % Simple 1-DOF pendulum
                     q1 = q(1);
                     s1 = sin(q1);
                     G(1) = -this.g*m(1)*L(1)/2*s1;
                     
                 case 2
-                    % 2-DOF double pendulum (planar)
                     q1 = q(1); q2 = q(2);
                     s1 = sin(q1); s12 = sin(q1 + q2);
                     
-                    % Both joints feel gravitational restoring torques
                     G(1) = -this.g*(m(1)*L(1)/2*s1 + m(2)*(L(1)*s1 + L(2)/2*s12));
                     G(2) = -this.g*m(2)*L(2)/2*s12;
                     
                 case 3
-                    % 3-DOF triple pendulum (planar)
                     q1 = q(1); q2 = q(2); q3 = q(3);
                     s1 = sin(q1); s12 = sin(q1 + q2); s123 = sin(q1 + q2 + q3);
                     
-                    % All joints contribute to gravitational restoring torques
                     G(1) = -this.g*(m(1)*L(1)/2*s1 + m(2)*(L(1)*s1 + L(2)/2*s12) + m(3)*(L(1)*s1 + L(2)*s12 + L(3)/2*s123));
                     G(2) = -this.g*(m(2)*L(2)/2*s12 + m(3)*(L(2)*s12 + L(3)/2*s123));
                     G(3) = -this.g*m(3)*L(3)/2*s123;
             end
         end
 
-        % Forward dynamics: compute joint accelerations given torques
+        % Forward dynamics
         % q_ddot = M^(-1) * (tau - C*q_dot - G - F_friction)
         function q_ddot = forwardDynamics(this, q, q_dot, tau)
             if length(q) ~= this.numLinks || length(q_dot) ~= this.numLinks || length(tau) ~= this.numLinks
@@ -449,15 +424,15 @@ classdef Robot < handle
             C = this.computeCoriolisMatrix(q, q_dot);
             G = this.computeGravityVector(q);
             
-            % Add damping/friction for stability
-            friction_coeff = 0.2;  % Viscous friction coefficient
+            % Add damping for stability
+            friction_coeff = 0.2;
             F_friction = friction_coeff * q_dot;
 
-            % Forward dynamics equation with friction
+            % Forward dynamics
             q_ddot = M \ (tau - C*q_dot - G - F_friction);
         end
 
-        % Inverse dynamics: compute required torques given desired accelerations
+        % Inverse dynamics
         % tau = M*q_ddot + C*q_dot + G
         function tau = inverseDynamics(this, q, q_dot, q_ddot)
             if length(q) ~= this.numLinks || length(q_dot) ~= this.numLinks || length(q_ddot) ~= this.numLinks
@@ -473,7 +448,7 @@ classdef Robot < handle
             tau = M*q_ddot + C*q_dot + G;
         end
 
-        % Simulate robot dynamics for one time step using ODE integration
+        % Simulate robot dynamics for one time step
         function [q_next, q_dot_next] = simulateStep(this, q, q_dot, tau, dt)
             % State vector: x = [q; q_dot]
             x0 = [q(:); q_dot(:)];
@@ -490,7 +465,7 @@ classdef Robot < handle
             q_dot_next = x_final(this.numLinks+1:2*this.numLinks);
             
             % Wrap joint angles to [-π, π] to prevent accumulation
-            q_next = wrapToPi(q_next);
+            % q_next = wrapToPi(q_next);
         end
 
         % ODE function for dynamics simulation
@@ -529,7 +504,7 @@ classdef Robot < handle
             total_reach = sum(this.Links);
             lim = total_reach * 1.2;
             
-            xlim([-lim, lim]); ylim([-0.2, lim]); % Z from slightly below 0 to +lim (upper quadrants)
+            xlim([-lim, lim]); ylim([-0.2, lim]);
             xlabel('X [m]'); ylabel('Z [m]');
             title(sprintf('%d-Link Planar Robot (2D Motion)', this.numLinks));
             
