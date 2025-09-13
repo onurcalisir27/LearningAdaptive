@@ -49,7 +49,7 @@ To shutdown, we transition **into deactivating, cleaning up, shutting down** and
 
 They are a tree structure of tasks to be completed. It creates a more scalable and human-understandable framework for defining multi-step or many state applications. 
 
-BT provides a formal structure for navigation logic which can be both used to create complex systems but also be verifable and validated. Having the application logic centralized in the behavior tree and with independent task servers (which only communicate data over the tree) allows for formal analysis.
+BT provides a formal structure for navigation logic which can be both used to create complex systems but also be verifiable and validated. Having the application logic centralized in the behavior tree and with independent task servers (which only communicate data over the tree) allows for formal analysis.
 
 NAV2 uses `BehaviorTree CPP V4` as the bt library. Node plugins are created which can be constructed into a tree, inside the `BT Navigator`. The node plugins are loaded into the BT and when the XML file of the tree is parsed, the registered names are associated. At this point the tree is used to navigate. 
 

@@ -1,45 +1,40 @@
-%% 2-Link Robot Arm Simulation
+% 2-Link Robot Arm Simulation
 clear; clc; close all;
 
 %% Robot Parameters
 L1 = 1.0;
-L2 = 0.5;
-m1 = 6.7;
-m2 = 3.35;
+L2 = 1.0;
+m1 = 5.0;
+m2 = 5.0;
 q1_0 = pi;
 q2_0 = 0.0;
 
-try
-    robot = Robot([L1, L2], [m1, m2], [q1_0, q2_0]);
-    fprintf('Robot created successfully with %d links\n', robot.numLinks);
-catch ME
-    fprintf('Error creating robot: %s\n', ME.message);
-    return;
-end
+robot = Robot([L1, L2], [m1, m2], [q1_0, q2_0]);
+fprintf('Robot created successfully with %d links\n', robot.numLinks);
 
 %% Controller Parameters
 num_joints = 2;
 input_history_dim = 1;     
-output_history_dim = 2;      
-lambda = 0.90;             
-goal_angle1 = pi;
-goal_angle2 = 0.0;
-goal_state = [goal_angle1; goal_angle2];
-initial_covariance = 10000;
+output_history_dim = 2;   
 
-try
-    controller = SelfTuningRegulator(num_joints, input_history_dim, output_history_dim, ...
-                                     lambda, goal_state, initial_covariance);
-    controller.setRobot(robot);
-    fprintf('Self-Tuning Regulator created successfully\n');
-catch ME
-    fprintf('Error creating controller: %s\n', ME.message);
-    return;
-end
+lambda = 0.70;             
+goal_angle1 = pi;
+goal_angle2 = pi/2;
+
+max_torque = 15.0; % [Nm]
+
+param_update_freq = 20;
+system_estimate_freq = 4;
+
+goal_state = [goal_angle1; goal_angle2];
+initial_covariance = 100000;
+
+controller = SelfTuningRegulator(num_joints, input_history_dim, output_history_dim, ...
+                             lambda, goal_state, initial_covariance, param_update_freq, system_estimate_freq);
 
 %% Simulation Parameters
-dt = 0.001;
-T_sim = 10.0;
+dt = 0.01;
+T_sim = 50.0;
 N_steps = round(T_sim / dt);
 
 fprintf('\nSimulation parameters:\n');
@@ -77,7 +72,6 @@ for i = 1:N_steps
         tau = tau_new;
         
         % Limit torques
-        max_torque = 50.0; % [Nm]
         tau = max(-max_torque, min(max_torque, tau)); % Element-wise for both joints
         
     catch ME
@@ -90,6 +84,8 @@ for i = 1:N_steps
         [q_next, q_dot_next] = robot.simulateStep(q, q_dot, tau, dt);
         q = q_next;
         q_dot = q_dot_next;
+        q = wrapTo2Pi(q);
+
     catch ME
         fprintf('Simulation error at step %d: %s\n', i, ME.message);
         break;
@@ -214,41 +210,41 @@ title('Joint 2 Control Torque vs Time');
 xlim([0, T_sim]);
 
 %% Error Analysis
-figure('Name', '2-Link Control Error Analysis', 'Position', [150, 150, 1000, 600]);
-
-subplot(2,2,1);
-error1_trajectory = rad2deg(abs(q_trajectory(1,:) - goal_state(1)));
-semilogy(time, error1_trajectory, 'b-', 'LineWidth', 2);
-grid on;
-xlabel('Time [s]');
-ylabel('Joint 1 Absolute Error [deg]');
-title('Joint 1 Control Error vs Time (Log Scale)');
-xlim([0, T_sim]);
-
-subplot(2,2,2);
-error2_trajectory = rad2deg(abs(q_trajectory(2,:) - goal_state(2)));
-semilogy(time, error2_trajectory, 'r-', 'LineWidth', 2);
-grid on;
-xlabel('Time [s]');
-ylabel('Joint 2 Absolute Error [deg]');
-title('Joint 2 Control Error vs Time (Log Scale)');
-xlim([0, T_sim]);
-
-subplot(2,2,3);
-plot(time, rad2deg(q_trajectory(1,:) - goal_state(1)), 'b-', 'LineWidth', 2);
-grid on;
-xlabel('Time [s]');
-ylabel('Joint 1 Tracking Error [deg]');
-title('Joint 1 Tracking Error vs Time');
-xlim([0, T_sim]);
-
-subplot(2,2,4);
-plot(time, rad2deg(q_trajectory(2,:) - goal_state(2)), 'r-', 'LineWidth', 2);
-grid on;
-xlabel('Time [s]');
-ylabel('Joint 2 Tracking Error [deg]');
-title('Joint 2 Tracking Error vs Time');
-xlim([0, T_sim]);
+% figure('Name', '2-Link Control Error Analysis', 'Position', [150, 150, 1000, 600]);
+% 
+% subplot(2,2,1);
+% error1_trajectory = rad2deg(abs(q_trajectory(1,:) - goal_state(1)));
+% semilogy(time, error1_trajectory, 'b-', 'LineWidth', 2);
+% grid on;
+% xlabel('Time [s]');
+% ylabel('Joint 1 Absolute Error [deg]');
+% title('Joint 1 Control Error vs Time (Log Scale)');
+% xlim([0, T_sim]);
+% 
+% subplot(2,2,2);
+% error2_trajectory = rad2deg(abs(q_trajectory(2,:) - goal_state(2)));
+% semilogy(time, error2_trajectory, 'r-', 'LineWidth', 2);
+% grid on;
+% xlabel('Time [s]');
+% ylabel('Joint 2 Absolute Error [deg]');
+% title('Joint 2 Control Error vs Time (Log Scale)');
+% xlim([0, T_sim]);
+% 
+% subplot(2,2,3);
+% plot(time, rad2deg(q_trajectory(1,:) - goal_state(1)), 'b-', 'LineWidth', 2);
+% grid on;
+% xlabel('Time [s]');
+% ylabel('Joint 1 Tracking Error [deg]');
+% title('Joint 1 Tracking Error vs Time');
+% xlim([0, T_sim]);
+% 
+% subplot(2,2,4);
+% plot(time, rad2deg(q_trajectory(2,:) - goal_state(2)), 'r-', 'LineWidth', 2);
+% grid on;
+% xlabel('Time [s]');
+% ylabel('Joint 2 Tracking Error [deg]');
+% title('Joint 2 Tracking Error vs Time');
+% xlim([0, T_sim]);
 
 %% Animation
 fprintf('\nStarting 2-link controlled animation...\n');
@@ -267,7 +263,3 @@ catch ME
     fprintf('  q2 range: [%.3f, %.3f] rad\n', min(q_trajectory(2,:)), max(q_trajectory(2,:)));
     fprintf('  Final errors: [%.3f, %.3f] rad\n', final_error1, final_error2);
 end
-
-fprintf('\n=== 2-LINK SELF-TUNING CONTROL TEST COMPLETED ===\n');
-
-fprintf('2-link test completed.\n');

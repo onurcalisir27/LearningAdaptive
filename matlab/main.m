@@ -9,7 +9,7 @@ robot = Robot([L1], [m1], [q0]);
 %% Controller Parameters
 
 % Desired Angle
-goal_angle = pi - 0.6;
+goal_angle = pi - 0.5;
 
 % Parameters to Tune
 % lambda = 0.92;            

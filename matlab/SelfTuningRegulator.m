@@ -2,7 +2,7 @@ classdef SelfTuningRegulator < handle
     properties
         lambda_ % forgetting factor
         goal_state_ % desired goal state []
- 
+
     end
 
     properties (Access = private)
@@ -17,52 +17,52 @@ classdef SelfTuningRegulator < handle
         L_;     % Gain matrix
         A_;     % State matrix
         B_;     % Input matrix
-        
-        num_joints_; 
+
+        num_joints_;
         n_ % input history size
         m_ % output history size
         p; % system dimension
-        r; % history dimension     
-                
+        r; % history dimension
+
         % Frequency control for parameter updates
         update_counter_;
         update_frequency_;
         estimate_frequency_;
 
     end
-    
+
     methods
         function this = SelfTuningRegulator(joints, input_dim, output_dim, lambda, goal_state, covariance, update_freq, estimate_freq)
-            
+
             this.num_joints_ = joints;
             this.lambda_ = lambda;
             this.goal_state_ = goal_state;
             this.m_ = input_dim;
             this.n_ = output_dim;
-            
+
             this.r = this.num_joints_ * this.n_ + this.num_joints_ * this.m_; % output size * n + input_size * m
             this.p = this.num_joints_ * this.r;
-            
+
             % Set default frequencies
             if nargin < 7 || isempty(update_freq)
                 this.update_frequency_ = 5;
             else
                 this.update_frequency_ = update_freq;
             end
-            
+
             if nargin < 8 || isempty(estimate_freq)
                 this.estimate_frequency_ = 1;
             else
                 this.estimate_frequency_ = estimate_freq;
             end
-            
+
             this.update_counter_ = 0;
 
             this.curr_state_ = zeros(this.num_joints_, 1);
             this.prev_state_ = zeros(this.num_joints_*this.n_, 1);
-            
+
             this.prev_input_ = zeros(this.num_joints_*this.m_, 1);
-            
+
             % Parameter estimators
             this.Theta_ = 0.5 * ones(this.p, 1);
             this.phi_ = zeros(this.r, 1);
@@ -79,32 +79,32 @@ classdef SelfTuningRegulator < handle
         end
 
         function update(this)
-            
+
             % Update Gain
             denL = this.lambda_ * eye(this.num_joints_) + this.Phi_ * this.P_ * this.Phi_';
-            
+
             % Add regularization to prevent singularity
             if rcond(denL) < 1e-12
                 denL = denL + 1e-6 * eye(size(denL));
             end
-            
+
             this.L_ = (this.P_ * this.Phi_') / denL;
-            
+
             % update Parameter
             prediction_error = this.curr_state_ - this.Phi_ * this.Theta_;
             this.Theta_ = this.Theta_ + this.L_ * prediction_error;
-            
+
             % Bound parameters
             this.Theta_ = max(-10, min(10, this.Theta_));
-            
+
             % update Covariance
             this.P_ = (this.P_ - this.L_ * this.Phi_ * this.P_) / this.lambda_;
-            
+
             % Ensure P remains positive definite
             [V, D] = eig(this.P_);
             D = diag(max(diag(D), 1e-6));  % Ensure positive eigenvalues
             this.P_ = V * D * V';
-  
+
         end
 
         function estimate(this)
@@ -122,7 +122,7 @@ classdef SelfTuningRegulator < handle
 
             % Constructing the phi vector from previous history
             this.phi_ = [this.prev_state_; this.prev_input_];
-            
+
             % updating the previous history with new feedback
             this.prev_state_ = [this.curr_state_; this.prev_state_];
             this.prev_state_ = this.prev_state_(1:this.num_joints_*this.n_);
@@ -138,7 +138,7 @@ classdef SelfTuningRegulator < handle
         end
 
         function input = computeControl(this, angles, inputs)
-            
+
             if length(angles) ~= this.num_joints_ || length(inputs) ~= this.num_joints_
                 error('Wrong dimensions! angles and inputs must be %d-element vectors', this.num_joints_);
             end
@@ -167,13 +167,13 @@ classdef SelfTuningRegulator < handle
         end
 
         function input = OneStepAheadController(this)
-            
+
             % yd = Ax + Bu
-            % Bu = yd - Ax --> u = B^-1 (yd - Ax)s
+            % Bu = yd - Ax --> u = B^-1 (yd - Ax)
             try
                 % Compute desired control input
                 error_signal = this.goal_state_ - this.A_ * this.prev_state_;
-                
+
                 % Check if B matrix is well-conditioned
                 if rank(this.B_) < size(this.B_, 2)
                     % B matrix is rank deficient, use pseudo-inverse
@@ -182,12 +182,12 @@ classdef SelfTuningRegulator < handle
                     % B matrix is full rank, use normal solution
                     input = this.B_ \ error_signal;
                 end
-                
+
                 % Ensure output is finite
                 if any(~isfinite(input))
                     input = zeros(size(input));
                 end
-                
+
             catch ME
                 % If anything fails, return zero control
                 fprintf('OneStepAheadController error: %s\n', ME.message);
@@ -195,7 +195,7 @@ classdef SelfTuningRegulator < handle
             end
 
         end
-        
+
     end
 
 end

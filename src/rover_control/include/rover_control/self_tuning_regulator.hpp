@@ -1,11 +1,5 @@
 #ifndef SELF_TUNING_REGULATOR_HPP
 #define SELF_TUNING_REGULATOR_HPP
-
-// #include <memory>
-// #include <string>
-#include <cmath>
-
-#include <deque>
 #include <Eigen/Dense>
 
 using Eigen::MatrixXd;
@@ -18,52 +12,57 @@ class SelfTuningRegulator{
         SelfTuningRegulator() = default;
         ~SelfTuningRegulator() = default;
 
-        void init(int n, int m, int input_dim, int output_dim, double lambda, double init_cov);
-
-        void shutdown();
+        void init(int& state_dim, int& input_dim, int& state_history, int& input_history, double forgettingfactor);
 
         void reset();
 
-        void start();
+        void set_frequency(int& param_freq, int& system_freq);
 
-        void construct_phi();
+        void set_bounds(double& param_bound, double& control_bound);
 
-        void update(VectorXd desired);
-        
-        VectorXd get_theta_parameters() {return Theta_;}
+        void set_covariance(double& initial_covariance);
 
-        MatrixXd get_covariance_matrix() {return P_;}
+        MatrixXd get_theta() {return Theta_;}
 
-        void estimate();
+        MatrixXd get_covariance() {return Cov_;}
 
-        VectorXd computeControl(VectorXd& desired, VectorXd& current, VectorXd& input);
+        VectorXd get_phi() {return phi_;}
+
+        VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input);
 
     private:
-    // input dim: p, output dim: k, system_dim: k x (nk + mp)
-        uint n_, m_;
-        uint system_dim_, phi_dim_, output_dim_, input_dim_;
-        double lambda_, initial_covariance_;
-        bool initialized_;
-        uint step_count_;
-        bool no_input_history;
 
-        // System ID params
-        VectorXd Theta_;    // [system_dim]
-        MatrixXd L_;        // [system_dim x output_dim_ ]
-        MatrixXd P_;        // [system_dim x system_dim]
+        // System Dimensions
+        int n_, m_, s_;
+        int p_, r_;
 
-        VectorXd phi_;      // [system_dim/output_dim]
-        MatrixXd Phi_;      // [output_dim x system_dim]
+        // Update frequencies
+        int step_;
+        int parameter_update_freq_;
+        int system_update_freq_;
 
-        std::deque<VectorXd> previous_outputs_; 
-        std::deque<VectorXd> previous_inputs_;
+        // Forgetting Factor
+        double lambda_;
 
-        // Controller Params
+        // Parameter Array
+        MatrixXd Theta_;
+
+        // Data Vector
+        VectorXd phi_;
+        VectorXd p_states_, p_inputs_;
+
+        // Kalman Gain
+        VectorXd K_;
+
+        // Covariance Matrix
+        MatrixXd Cov_;
+
+        // State-Input Matrix estimate
         MatrixXd A_;
-        VectorXd x_;  // past outputs
-        MatrixXd Bc_; // B current
-        MatrixXd Bp_; // B past
-        VectorXd up_; // past inputs
+        MatrixXd B_;
+
+        // Bound parameters and input values to realistic values
+        double theta_bound_, u_bound_;
 };
 
 #endif // SELF_TUNING_REGULATOR_HPP

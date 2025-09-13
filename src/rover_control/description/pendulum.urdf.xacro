@@ -22,8 +22,8 @@
 
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="1000.0"/>
-      <inertia ixx="84.1666667" iyy="84.1666667" izz="166.6666667"
+      <mass value="100.0"/>
+      <inertia ixx="8.416667" iyy="8.416667" izz="16.66667"
                ixy="0" ixz="0" iyz="0"/>
     </inertial>
   </link>
@@ -58,7 +58,7 @@
 <!-- Using an aluminium bar as the pendulum link \rho=2.7 g/cm^3-->
       <origin xyz="0 0 0.5" rpy="0 0 0"/>
       <mass value="6.7"/>
-      <inertia ixx="2.23333" iyy="2.23333" izz="0.57229167"
+      <inertia ixx="2.2333" iyy="2.2333" izz="0.0014"
                ixy="0" ixz="0" iyz="0"/>
     </inertial>
   </link>

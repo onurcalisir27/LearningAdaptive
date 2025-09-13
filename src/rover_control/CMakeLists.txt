@@ -14,8 +14,16 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 include_directories(include)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Params.msg"
+)
+
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} rosidl_typesupport_cpp)
 
 add_executable(pendulum_control_node src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
 
@@ -28,7 +36,7 @@ target_include_directories(pendulum_control_node
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(pendulum_control_node Eigen3::Eigen)
+target_link_libraries(pendulum_control_node Eigen3::Eigen ${cpp_typesupport_target})
 
 add_executable(pendulum_node src/pendulum_node.cpp )
 

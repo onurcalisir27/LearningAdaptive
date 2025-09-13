@@ -1,214 +1,197 @@
 #include "rover_control/self_tuning_regulator.hpp"
+#include <Eigen/src/Core/Matrix.h>
 #include <iostream>
-// #include <cstdint>
 #include <Eigen/Dense>
+#include <cmath>
 #include <algorithm>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-#define CLAMP_COVARIANCE
-
-void SelfTuningRegulator::init(int n, int m, int input_dim, int output_dim, double lambda, double init_cov){
-
-    n_ = n;
-    m_ = m;
-    system_dim_ = output_dim * (n * output_dim + m * input_dim);
-    phi_dim_ = n * output_dim + m * input_dim;
-    output_dim_ = output_dim;
-    input_dim_ = input_dim;
-    lambda_ = lambda;
-    initialized_ = false;
-    step_count_ = 0;
-    initial_covariance_ = init_cov;
-
-    Theta_ = VectorXd::Random(system_dim_);
-    L_ = MatrixXd::Zero(system_dim_, output_dim_);
-    P_ = MatrixXd::Identity(system_dim_, system_dim_) * initial_covariance_;
-
-    phi_ = VectorXd::Zero(phi_dim_);
-    Phi_ =  MatrixXd::Zero(output_dim_, system_dim_);
-
-    previous_outputs_.resize(n_, VectorXd::Zero(output_dim_)); 
-    previous_inputs_.resize(m_, VectorXd::Zero(input_dim_));
-
-    A_ = MatrixXd::Zero(output_dim_, output_dim_*n_);
-    x_ = VectorXd(output_dim_ * n_);
-
-    Bc_ = MatrixXd::Zero(output_dim_, input_dim_);
-
-    if (m_ < 2){
-        no_input_history = true;
-        std::cout << "No input history, Bp_ doesnt exist" << std::endl;
-    } else {
-        no_input_history = false;
-        Bp_ = MatrixXd::Zero(output_dim_, input_dim_ * (m_-1));
-        up_ = VectorXd(input_dim_ * (m_-1));
-    }
+void printM(MatrixXd M){
+  std::cout << M << std::endl << std::endl;
 }
 
-void SelfTuningRegulator::shutdown(){
-
-    initialized_ = false;
-}
-
-void SelfTuningRegulator::reset(){
-
-    Theta_ = VectorXd::Random(system_dim_);
-    L_ = MatrixXd::Zero(system_dim_, output_dim_);
-    P_ = MatrixXd::Identity(system_dim_, system_dim_) * initial_covariance_;
-
-    phi_ = VectorXd::Zero(phi_dim_);
-    Phi_ =  MatrixXd::Zero(output_dim_, system_dim_);
-
-    previous_outputs_.resize(n_, VectorXd::Zero(output_dim_)); 
-    previous_inputs_.resize(m_, VectorXd::Zero(input_dim_));
-
-    A_ = MatrixXd::Zero(output_dim_, output_dim_*n_);
-    x_ = VectorXd(output_dim_ * n_);
-
-    Bc_ = MatrixXd::Zero(output_dim_, input_dim_);
-
-    if(!no_input_history){
-        Bp_ = MatrixXd::Zero(output_dim_, input_dim_ * (m_-1));
-        up_ = VectorXd(input_dim_ * (m_-1));
-    }
-
-}
-
-void SelfTuningRegulator::start(){
-    initialized_ = true;
-}   
-
-void SelfTuningRegulator::construct_phi() {
-
-    for (uint i=0; i < previous_outputs_.size(); i++){
-    phi_.segment(i*output_dim_, output_dim_) = previous_outputs_[i];
-    }
-    for (uint j=0; j < previous_inputs_.size(); j++){
-    phi_.segment(n_*output_dim_ + j*input_dim_, input_dim_) = previous_inputs_[j];
-    }
-    for (uint k=0; k < output_dim_; k++){
-        Phi_.row(k).segment(k*phi_dim_, phi_dim_) = phi_.transpose();
-    }
-    std::cout << "Phi Matrix:" << Phi_ << "\n \n";
-}
-
-void SelfTuningRegulator::update(VectorXd desired)
+void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_history, int& input_history, double forgettingfactor)
 {
-    MatrixXd L_den = MatrixXd::Identity(output_dim_,output_dim_) * lambda_ + Phi_ * P_ * Phi_.transpose();
-    L_ = (P_ * Phi_.transpose() ) * L_den.inverse();
-    // L_ = (P_ * Phi_.transpose()) * L_den.completeOrthogonalDecomposition().pseudoInverse();
-    // L_ = (P_ * Phi_.transpose()) * L_den.ldlt().solve(MatrixXd::Identity(output_dim_, output_dim_));
-    
-    Theta_ = Theta_ + L_ * (desired - Phi_ * Theta_);
-    
-    double dLimit=0.95;
-    for (int iLoop= output_dim_*n_; iLoop < phi_dim_; iLoop++)
-    {
-        Theta_(iLoop,0) = std::clamp(Theta_(iLoop,0), -dLimit, dLimit);
-    }
+    step_ = 0;
+    n_ = state_dim;
+    m_ = input_dim;
+    p_ = state_history;
+    r_ = input_history;
+    s_ = n_ * p_ + m_ * r_;
 
-    std::cout << "Theta Vector:" << Theta_ << "\n";
+    lambda_ = forgettingfactor;
 
-    P_ = (MatrixXd::Identity(system_dim_, system_dim_) - (L_ * Phi_)) * P_ / lambda_;
+    Theta_ = MatrixXd::Ones(s_, n_);
+    phi_ = VectorXd::Zero(s_);
 
-	for (int iLoop1=0; iLoop1<system_dim_; iLoop1++)
-	{
-      double dLimitDiagonal=10000.0;
-      double dLimitOffDiagonal=100.0;
-#ifdef CLAMP_COVARIANCE     
-      P_(iLoop1,iLoop1)=std::clamp(P_(iLoop1,iLoop1), 0.0, dLimitDiagonal);
-#endif // CLAMP_COVARIANCE     
-      for (int iLoop2=0; iLoop2<system_dim_; iLoop2++)
-      {
-	if (iLoop1 == iLoop2)
-        {
-          fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
-	  continue;
-	}else
-    {
-#ifdef CLAMP_COVARIANCE     
-          P_(iLoop1,iLoop2)=std::clamp(P_(iLoop1,iLoop2), 0.0, dLimitOffDiagonal);
-#endif // CLAMP_COVARIANCE     
-          fprintf(stdout, "%.2lf ", P_(iLoop1,iLoop2)), fflush(stdout);
-	}
-      }
-      fprintf(stdout, "\n"), fflush(stdout);
-    }
+    p_states_ = VectorXd::Zero(n_*p_);
+    p_inputs_ = VectorXd::Zero(m_*r_);
 
-    construct_phi(); // for next update
+    K_ = VectorXd::Random(s_);
+    Cov_ = MatrixXd::Identity(s_, s_) * 1e6;
+
+    A_ = MatrixXd::Identity(n_, n_*p_);
+    B_ = MatrixXd::Identity(n_, m_*r_);
 }
 
-void SelfTuningRegulator::estimate(){
+void SelfTuningRegulator::reset()
+{
+    step_ = 0;
+    Theta_ = MatrixXd::Ones(s_, n_);
+    phi_ = VectorXd::Zero(s_);
 
-    int idx(0);
-    for (VectorXd i : previous_outputs_){
-        x_.segment(idx*output_dim_, output_dim_) = i; 
-        idx++;
-    }
+    p_states_ = VectorXd::Zero(n_*p_);
+    p_inputs_ = VectorXd::Zero(m_*r_);
 
-    idx = 0;
-    if (!no_input_history){
-        for(VectorXd j : previous_inputs_){
-            if (j == previous_inputs_.back()) {continue;}
-            up_.segment(idx*input_dim_, input_dim_) = j;
-            idx++;
-        }
-    }
-    
-    for(int i = 0; i < output_dim_; i++) {
-        A_.row(i) = Theta_.segment((i * phi_dim_), output_dim_ * n_).transpose();
+    K_ = VectorXd::Random(s_);
+    Cov_ = MatrixXd::Identity(s_, s_) * 1e6;
 
-        Bc_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_ * n_)), input_dim_).transpose();
-
-        if (!no_input_history){
-            std::cout << "Building Bp now! \n";
-            Bp_.row(i) = Theta_.segment((i * phi_dim_ + (output_dim_* n_ + input_dim_)), (m_ - 1) * input_dim_).transpose();
-        } 
-
-    }
+    A_ = MatrixXd::Identity(n_, n_*p_);
+    B_ = MatrixXd::Identity(n_, m_*r_);
 }
 
-VectorXd SelfTuningRegulator::computeControl(VectorXd& desired, VectorXd& current, VectorXd& prev_input){
+void SelfTuningRegulator::set_frequency(int& param_freq, int& system_freq)
+{
+    parameter_update_freq_ = param_freq;
+    system_update_freq_ = system_freq;
+}
 
-    if(desired.size() != output_dim_ || current.size() != output_dim_ || prev_input.size() != input_dim_){
-        std::cerr << "Dimension mismatch, check your inputs to the function \n";
-        exit(1);
-    }
+void SelfTuningRegulator::set_bounds(double& param_bound, double& control_bound)
+{
+    theta_bound_ = param_bound;
+    u_bound_ = control_bound;
+}
 
-    VectorXd u_c = VectorXd::Random(input_dim_) * 0.05;
-    // VectorXd u_c = VectorXd::Zero(input_dim_);
+void SelfTuningRegulator::set_covariance(double& initial_covariance)
+{
+    Cov_ = MatrixXd::Identity(s_, s_) * initial_covariance;
+}
 
-    previous_outputs_.push_front(current);
-    previous_inputs_.push_front(prev_input);
+VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input)
+{
+    // Skip parameter estimation for first few steps until we have enough data
+    if (step_ > 0) {
+        // Construct phi from previous states and previous inputs (at time k-1)
+        phi_ << p_states_, p_inputs_;
+        std::cout << "Phi: \n" << phi_ << std::endl;
 
-    if (previous_outputs_.size() > n_) {previous_outputs_.pop_back();}
-    if (previous_inputs_.size() > m_) {previous_inputs_.pop_back();}
+        // Compute the current prediction error: y(k) - phi^T(k-1) * theta(k-1)
+        VectorXd prediction_error = current - Theta_.transpose() * phi_;
+        std::cout << "Prediction error: \n" << prediction_error << std::endl;
 
-    if (step_count_ < n_ + m_){
-        std::cout << "Not enough information, use different controller \n";
+        // RLS Update: Compute Kalman Gain with numerical stability
+        VectorXd P_phi = Cov_ * phi_;
+        double denominator = lambda_ + phi_.transpose() * P_phi;
 
-    } else{
-        std::cout << "Using estimated parameters to calculate control effort! \n";
-        estimate();
-        
-        std::cout << "If it fails now, we got an inverse error" << std::endl;
-        if (no_input_history)
-        {
-            double Bc_temp = std::max(Bc_(0,0),0.001);
-            double Bc_inv = 1.0 / Bc_temp;
-            u_c = u_c + Bc_inv * (desired - A_ * x_);
-        } else{
-            MatrixXd Bc_inverse =  Bc_.inverse();
-            // MatrixXd Bc_inverse =  Bc_.completeOrthogonalDecomposition().pseudoInverse();
-            u_c = u_c + Bc_inverse * (desired - A_ * x_ - Bp_ * up_);
+        // Add numerical stability check
+        if (std::abs(denominator) < 1e-12) {
+            denominator = std::copysign(1e-12, denominator);
+            std::cout << "Warning: Near-singular denominator in Kalman gain!" << std::endl;
         }
-        std::cout << "We computed u_c = " << u_c << " moving on..." << std::endl;
+
+        K_ = P_phi / denominator;
+        std::cout << "Gain: \n" << K_ << std::endl;
+
+        // Update Parameter estimation: theta(k) = theta(k-1) + K * e(k)
+        for (int i = 0; i < n_; i++) {
+            Theta_.col(i) += K_ * prediction_error(i);
+        }
+
+        // Apply parameter bounds
+        Theta_ = Theta_.cwiseMin(theta_bound_).cwiseMax(-theta_bound_);
+        std::cout << "Parameters: \n" << Theta_ << std::endl;
+
+        // Update Covariance Matrix: P(k) = (P(k-1) - K * phi^T * P(k-1)) / lambda
+        Cov_ = (Cov_ - K_ * phi_.transpose() * Cov_) / lambda_;
+
+        // Ensure covariance remains positive definite
+        Eigen::SelfAdjointEigenSolver<MatrixXd> eigensolver(Cov_);
+        if (eigensolver.eigenvalues().minCoeff() < 1e-12) {
+            // Regularize the covariance matrix
+            Cov_ += MatrixXd::Identity(s_, s_) * 1e-6;
+            std::cout << "Warning: Covariance regularized!" << std::endl;
+        }
+
+        std::cout << "Covariance: \n" << Cov_ << std::endl << std::endl;
     }
 
-    update(desired);
-    step_count_++;
+    // Extract A and B matrices from current parameter estimate
+    A_ = Theta_.transpose().block(0, 0, n_, n_*p_);
+    B_ = Theta_.transpose().block(0, n_*p_, n_, m_*r_);
 
-    return u_c;
+    std::cout << "A Matrix: \n";
+    printM(A_);
+    std::cout << "B Matrix: \n";
+    printM(B_);
+
+    // One-step-ahead control law
+    // Model: y(k+1) = A * Y(k) + B * U(k)
+    // where Y(k) = [y(k), y(k-1), ..., y(k-p+1)]^T
+    // and U(k) = [u(k), u(k-1), ..., u(k-r+1)]^T
+
+    // For one-step ahead: y_ref(k+1) = A * Y(k) + B * U(k)
+    // We need to solve for u(k) (the first element of U(k))
+
+    VectorXd Y_current = p_states_; // Current state history
+    VectorXd U_prev = p_inputs_;    // Previous input history
+
+    // Predicted output without new control: y_pred = A * Y(k)
+    VectorXd y_pred = A_ * Y_current;
+
+    // Required correction: error = desired - predicted
+    VectorXd error = desired - y_pred;
+    std::cout << "Control error: \n" << error << std::endl;
+
+    // Solve B * U(k) = error for the control input
+    // Since we're updating only u(k), we need to account for previous inputs
+    VectorXd U_new = VectorXd::Zero(m_*r_);
+
+    // Copy previous inputs (shifted)
+    if (r_ > 1) {
+        U_new.segment(m_, m_*(r_-1)) = U_prev.segment(0, m_*(r_-1));
+    }
+
+    // Solve for the new input u(k) using pseudoinverse with better conditioning
+    MatrixXd B_current = B_.block(0, 0, n_, m_); // Only the current input part
+
+    Eigen::JacobiSVD<MatrixXd> svd(B_current, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    double tolerance = 1e-6 * std::max(B_current.rows(), B_current.cols()) * svd.singularValues().maxCoeff();
+
+    VectorXd input;
+    if (svd.singularValues().minCoeff() > tolerance) {
+        // B matrix is well-conditioned
+        VectorXd B_prev_contribution = VectorXd::Zero(n_);
+        if (r_ > 1) {
+            B_prev_contribution = B_.block(0, m_, n_, m_*(r_-1)) * U_prev.segment(0, m_*(r_-1));
+        }
+        input = svd.solve(error - B_prev_contribution);
+    } else {
+        // Fallback: use damped least squares
+        MatrixXd BTB = B_current.transpose() * B_current;
+        BTB.diagonal().array() += 1e-6; // Damping
+        input = BTB.ldlt().solve(B_current.transpose() * error);
+        std::cout << "Warning: Using damped least squares for control!" << std::endl;
+    }
+
+    // Apply control bounds
+    input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
+    std::cout << "Computed input: \n" << input << std::endl;
+
+    // Update state and input histories
+    // Shift states: [current, previous_states]
+    VectorXd new_states = VectorXd::Zero(n_*p_);
+    new_states.segment(0, n_) = current;
+    if (p_ > 1) {
+        new_states.segment(n_, n_*(p_-1)) = p_states_.segment(0, n_*(p_-1));
+    }
+    p_states_ = new_states;
+
+    // Shift inputs: [new_input, previous_inputs]
+    U_new.segment(0, m_) = input;
+    p_inputs_ = U_new;
+
+    step_++;
+    return input;
 }

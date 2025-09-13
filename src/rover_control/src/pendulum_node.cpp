@@ -30,11 +30,11 @@ class PendulumNode : public rclcpp::Node
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("pendulum_controller/commands",50);
             metrics_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("metrics",10);
 
-            control_timer_ = this->create_wall_timer(50ms, std::bind(&PendulumNode::controlPendulum, this));
-            update_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumNode::updatePendulum, this));
+            control_timer_ = this->create_wall_timer(200ms, std::bind(&PendulumNode::controlPendulum, this));
+            update_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumNode::updatePendulum, this));
             srand(time(0));
 
-            limit = 250.0;
+            limit = 200.0;
             n_ = 2;
             m_ = 1;
             nm_ = n_ + m_;
@@ -95,18 +95,18 @@ class PendulumNode : public rclcpp::Node
 
         void updatePendulum(){
 
-            // Phi << angles_.front(), angles_.back(), prev_input_;
-            Theta = Theta + L * (current_state_(0) - Phi.transpose() * Theta);
-            // std::cout << "Your Theta is: " << Theta << std::endl;
-
             double L_den = lambda_ + (Phi.transpose() * P * Phi)(0,0);
             L = P * Phi / L_den;
             std::cout << "L Gain Vector: " << L << std::endl;
 
+            // Phi << angles_.front(), angles_.back(), prev_input_;
+            Theta = Theta + L * (current_state_(0) - Theta.transpose() * Phi);
+            // std::cout << "Your Theta is: " << Theta << std::endl;
+
             // P = (MatrixXd::Identity(3,3) - L * Phi.transpose()) * P / lambda_;
             P = (P - L * Phi.transpose() * P) / lambda_;
 
-            std::cout << "Covariance MAtrix: \n " << P << "\n\n";
+            std::cout << "Covariance Matrix: \n " << P << "\n\n";
 
        }
 

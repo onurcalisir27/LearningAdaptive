@@ -11,6 +11,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
+
     pkg_share = get_package_share_directory('rover_control')
     urdf_file = os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')
     world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
@@ -22,6 +23,7 @@ def generate_launch_description():
         ),
         'use_sim_time': True
     }
+
     forgetting_factor_arg = DeclareLaunchArgument(
         'lambda',
         default_value='0.98',
@@ -107,14 +109,23 @@ def generate_launch_description():
 
     str_node = Node(
         package='rover_control',
-        executable='pendulum_node',
+        executable='pendulum_control_node',
         output='screen',
         parameters=[{
             'forgetting_factor': forgetting_factor,
             'desired_angle': desired_angle,
         }]
     )
-
+    # str_node = Node(
+    #     package='rover_control',
+    #     executable='pendulum_node',
+    #     output='screen',
+    #     parameters=[{
+    #         'forgetting_factor': forgetting_factor,
+    #         'desired_angle': desired_angle,
+    #     }]
+    # )
+    #
     delay_str = TimerAction(
         period=12.0,
         actions=[forgetting_factor_arg, desired_angle_arg, str_node]
