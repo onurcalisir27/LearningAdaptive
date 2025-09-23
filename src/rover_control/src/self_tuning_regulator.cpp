@@ -78,14 +78,14 @@ VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current
       return VectorXd::Zero(m_);
     }
 
-    if(step_ > 10000 && current != desired){
+    if(step_ > 100000 && current != desired){
         reset();
         step_  = 0;
         return VectorXd::Zero(m_);
     }
 
     // Construct phi from previous states and previous inputs (at time k-1)
-    phi_ << -p_states_, p_inputs_;
+    phi_ << p_states_, p_inputs_;
     std::cout << "Phi: \n" << phi_ << std::endl;
 
     // Update parameter estimate
@@ -170,8 +170,8 @@ void SelfTuningRegulator::parameter_estimation(VectorXd& current){
 
 void SelfTuningRegulator::covariance_update(){
 
-    Cov_ = Cov_ - K_ * phi_.transpose() * Cov_;
-    Cov_ = Cov_ / lambda_;
+    MatrixXd IKPhi = MatrixXd::Identity(s_, s_) - K_ * phi_.transpose();
+    Cov_ = (IKPhi * Cov_ * IKPhi.transpose()) / lambda_;
     Cov_ = (Cov_ + Cov_.transpose()) / 2.0;
 
     Eigen::SelfAdjointEigenSolver<MatrixXd> eigensolver(Cov_);
@@ -195,6 +195,5 @@ VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
     // Apply control bounds
     input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
     std::cout << "Computed input: \n" << input << std::endl;
-
     return input;
 }
