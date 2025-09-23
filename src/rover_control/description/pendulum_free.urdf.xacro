@@ -72,9 +72,9 @@
 
   <link name="pendulum_link">
     <visual>
-      <origin xyz="0 0 0.5" rpy="0 0 0"/>
+      <origin xyz="0 0 0.25" rpy="0 0 0"/>
       <geometry>
-        <box size="0.05 0.05 1.0"/>
+        <box size="0.01 0.01 0.5"/>
       </geometry>
       <material name="pendulum_color">
         <color rgba="0.1 0.1 0.1 1.0"/>
@@ -82,17 +82,17 @@
     </visual>
 
     <collision>
-      <origin xyz="0 0 0.5" rpy="0 0 0"/>
+      <origin xyz="0 0 0.25" rpy="0 0 0"/>
       <geometry>
-        <box size="0.05 0.05 1.0"/>
+        <box size="0.01 0.01 0.5"/>
       </geometry>
     </collision>
 
     <inertial>
 <!-- Using an aluminium bar as the pendulum link \rho=2.7 g/cm^3-->
-      <origin xyz="0 0 0.5" rpy="0 0 0"/>
-      <mass value="6.7"/>
-      <inertia ixx="2.2333" iyy="2.2333" izz="0.0014"
+      <origin xyz="0 0 0.25" rpy="0 0 0"/>
+      <mass value="0.135"/>
+      <inertia ixx="0.003" iyy="0" izz="0.003"
                ixy="0" ixz="0" iyz="0"/>
     </inertial>
   </link>

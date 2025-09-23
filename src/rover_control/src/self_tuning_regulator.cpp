@@ -85,7 +85,7 @@ VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current
     }
 
     // Construct phi from previous states and previous inputs (at time k-1)
-    phi_ << p_states_, p_inputs_;
+    phi_ << -p_states_, p_inputs_;
     std::cout << "Phi: \n" << phi_ << std::endl;
 
     // Update parameter estimate
@@ -168,35 +168,6 @@ void SelfTuningRegulator::parameter_estimation(VectorXd& current){
     std::cout << "Covariance: \n" << Cov_ << std::endl << std::endl;
 }
 
-// void SelfTuningRegulator::covariance_update(){
-//
-//     // Update Covariance Matrix: P(k) = (P(k-1) - K * phi^T * P(k-1)) / lambda
-//     // Use Joseph form for better numerical stability
-//     MatrixXd I_minus_K_phi = MatrixXd::Identity(s_, s_) - K_ * phi_.transpose();
-//     Cov_ = (I_minus_K_phi * Cov_ * I_minus_K_phi.transpose()) / lambda_;
-//
-//     // Add process noise for regularization (prevents covariance collapse)
-//     double process_noise = 1e-4;
-//     Cov_ += MatrixXd::Identity(s_, s_) * process_noise;
-//
-//     // Ensure covariance remains positive definite with stronger regularization
-//     Eigen::SelfAdjointEigenSolver<MatrixXd> eigensolver(Cov_);
-//     double min_eigenvalue = eigensolver.eigenvalues().minCoeff();
-//     double condition_number = eigensolver.eigenvalues().maxCoeff() / std::max(min_eigenvalue, 1e-15);
-//
-//     if (min_eigenvalue < 1e-8 || condition_number > 1e12) {
-//         // Strong regularization for ill-conditioned matrix
-//         double regularization = std::max(1e-4, -min_eigenvalue + 1e-8);
-//         Cov_ += MatrixXd::Identity(s_, s_) * regularization;
-//         std::cout << "Warning: Covariance regularized with " << regularization
-//                   << " (min_eig=" << min_eigenvalue << ", cond=" << condition_number << ")" << std::endl;
-//     }
-//
-//     // Bound covariance elements to prevent explosion
-//     double max_cov = 1e8;
-//     Cov_ = Cov_.cwiseMin(max_cov).cwiseMax(-max_cov);
-// }
-
 void SelfTuningRegulator::covariance_update(){
 
     Cov_ = Cov_ - K_ * phi_.transpose() * Cov_;
@@ -212,36 +183,15 @@ VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
 
     // Solve for the new input u(k)
     MatrixXd B_current = B_.block(0, 0, n_, m_);
+    VectorXd input(m_);
 
-    Eigen::JacobiSVD<MatrixXd> svd(B_current, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    double tolerance = 1e-6 * std::max(B_current.rows(), B_current.cols()) * svd.singularValues().maxCoeff();
-
-    VectorXd input = VectorXd::Zero(m_);
-    if (svd.singularValues().minCoeff() > tolerance) {
-        // B matrix is well-conditioned
-        VectorXd solved = svd.solve(error);
-        if (solved.size() == m_) {
-            input = solved;
-        } else {
-            std::cout << "Warning: SVD solve dimension mismatch. Expected " << m_ << ", got " << solved.size() << std::endl;
-            // Fallback to safe default
-            input = VectorXd::Zero(m_);
-        }
-    } else {
-        // Fallback: use damped least squares
-        MatrixXd BTB = B_current.transpose() * B_current;
-        BTB.diagonal().array() += 1e-6;
-        VectorXd rhs = B_current.transpose() * error;
-        VectorXd solved = BTB.ldlt().solve(rhs);
-        if (solved.size() == m_) {
-            input = solved;
-        } else {
-            std::cout << "Warning: Damped LS dimension mismatch. Expected " << m_ << ", got " << solved.size() << std::endl;
-            input = VectorXd::Zero(m_);
-        }
-        std::cout << "Warning: Using damped least squares for control!" << std::endl;
+    // Check if B_current is rank defficient
+    Eigen::JacobiSVD<MatrixXd> B_svd(B_current);
+    if(B_svd.rank() < B_current.cols()){
+      input = B_svd.solve(error);
+    } else{
+      input = B_current.inverse() * error;
     }
-
     // Apply control bounds
     input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
     std::cout << "Computed input: \n" << input << std::endl;

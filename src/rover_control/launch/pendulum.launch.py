@@ -13,8 +13,9 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
 
     pkg_share = get_package_share_directory('rover_control')
+    sim_dir = get_package_share_directory('rover_sim')
     urdf_file = os.path.join(pkg_share, 'description', 'pendulum_free.urdf.xacro')
-    world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
+    world_file = os.path.join(sim_dir, 'worlds', 'test.sdf')
     robot_description = Command(['xacro ', urdf_file])
     params = {
         'robot_description': ParameterValue(
@@ -36,8 +37,29 @@ def generate_launch_description():
         description='Desired angle for the pendulum to stabilize on'
     )
 
+    u_bound_arg = DeclareLaunchArgument(
+        'u_bound',
+        default_value='0.0',
+        description='Control Input bound for the controller'
+    )
+
+    parameter_update_arg = DeclareLaunchArgument(
+        'p_update',
+        default_value='20.0',
+        description='System ID Parameter Update Frequency'
+    )
+
+    system_update_arg = DeclareLaunchArgument(
+        's_update',
+        default_value='4.0',
+        description='System Parameters Update Frequency'
+    )
+
     forgetting_factor = LaunchConfiguration('forgetting_factor')
     desired_angle = LaunchConfiguration('desired_angle')
+    u_bound = LaunchConfiguration('u_bound')
+    p_update = LaunchConfiguration('p_update')
+    s_update = LaunchConfiguration('s_update')
 
     urdf_pub = Node(
         package='robot_state_publisher',
@@ -99,7 +121,6 @@ def generate_launch_description():
         arguments=[
             # Clock sync
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            # "/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model",
         ],
         parameters=[{
             'use_sim_time': True
@@ -114,21 +135,17 @@ def generate_launch_description():
         parameters=[{
             'forgetting_factor': forgetting_factor,
             'desired_angle': desired_angle,
+            'u_bound': u_bound,
+            'p_update': p_update,
+            's_update': s_update
         }]
     )
-    # str_node = Node(
-    #     package='rover_control',
-    #     executable='pendulum_node',
-    #     output='screen',
-    #     parameters=[{
-    #         'forgetting_factor': forgetting_factor,
-    #         'desired_angle': desired_angle,
-    #     }]
-    # )
-    #
+
     delay_str = TimerAction(
         period=12.0,
-        actions=[forgetting_factor_arg, desired_angle_arg, str_node]
+        actions=[forgetting_factor_arg, desired_angle_arg,
+                 u_bound_arg, parameter_update_arg, system_update_arg,
+                 str_node]
     )
 
     ld = LaunchDescription()
@@ -139,5 +156,4 @@ def generate_launch_description():
     ld.add_action(delay_joints)
     ld.add_action(bridge)
     ld.add_action(delay_str)
-
     return ld
