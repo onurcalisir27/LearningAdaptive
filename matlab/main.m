@@ -7,29 +7,26 @@ q0 = 0.0;
 robot = Robot([L1], [m1], [q0]);
 
 %% Controller Parameters
-
 % Desired Angle
-goal_angle = pi - 0.5;
+goal_angle = pi - 0.8;
 
 % Parameters to Tune
 % lambda = 0.92;            
 lambda = 0.75; 
 
 max_torque = 20.0; % [Nm]
-% max_torque = 25.0; % [Nm]
-initial_covariance = 100000;
-
 param_update_freq = 20;
 system_estimate_freq = 4;
 
 % One Link Pendulum
-num_joints = 1;
-input_history_dim = 1;     
-output_history_dim = 2;      
+state_dim = 1;
+input_dim = 1;
+input_history = 1;     
+state_history = 2;      
+covariance = 1e6;
 goal_state = [goal_angle];
-controller = SelfTuningRegulator(num_joints, input_history_dim, output_history_dim, ...
-                                     lambda, goal_state, initial_covariance, ...
-                                     param_update_freq, system_estimate_freq);
+controller = SelfTuningRegulator(state_dim, input_dim, state_history, ...
+    input_history, lambda, covariance, param_update_freq, system_estimate_freq );
 %% Simulation Parameters
 dt = 0.01;
 T_sim = 50.0;
@@ -63,7 +60,7 @@ for i = 1:N_steps
         current_angles = [q];
         previous_inputs = [tau];
         
-        tau_new = controller.computeControl(current_angles, previous_inputs);
+        tau_new = controller.computeControl(goal_state, current_angles, previous_inputs);
         tau = tau_new(1);
 
         % Limit torque

@@ -33,7 +33,7 @@
             name="gz::sim::systems::JointStatePublisher">
       <joint_name>pendulum_joint</joint_name>
       <topic>joint_states</topic>
-      <update_rate>100</update_rate>
+      <update_rate>20</update_rate>
     </plugin>
   </gazebo>
 

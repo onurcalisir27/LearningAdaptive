@@ -32,6 +32,17 @@ class SelfTuningRegulator{
 
     private:
 
+        //Helper Functions
+        void phi_update(VectorXd& state, VectorXd& input);
+
+        void parameter_estimation(VectorXd& current);
+
+        void system_update();
+
+        void covariance_update();
+
+        VectorXd step_ahead_control(VectorXd& error);
+
         // System Dimensions
         int n_, m_, s_;
         int p_, r_;

@@ -13,7 +13,7 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
 
     pkg_share = get_package_share_directory('rover_control')
-    urdf_file = os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')
+    urdf_file = os.path.join(pkg_share, 'description', 'pendulum_free.urdf.xacro')
     world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
     robot_description = Command(['xacro ', urdf_file])
     params = {

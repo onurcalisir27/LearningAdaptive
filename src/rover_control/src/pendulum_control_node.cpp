@@ -4,6 +4,7 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "rover_control/msg/params.hpp"
 
+#include <cmath>
 #include <memory>
 #include <Eigen/Dense>
 using namespace std::chrono_literals;
@@ -21,30 +22,30 @@ class PendulumControlNode : public rclcpp::Node
 
             // Controller Parameters
             int state_history = 2;
+            int state_dim = 1;
             int input_history = 1;
             int input_dim = 1;
-            int output_dim = 2;
-            double covariance = 1e4;
-            controller_.init(output_dim, input_dim, state_history, input_history, lambda);
+            double covariance = 1e6;
+            controller_.init(state_dim, input_dim, state_history, input_history, lambda);
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
             // Set the bounds
-            double theta_bound = 10.0;
-            double input_bound = 35.0;
+            double theta_bound = 5.0;
+            double input_bound = 20.0;
             controller_.set_bounds(theta_bound, input_bound);
 
             // Frequency rates
-            int update_frequency = 1;
-            int estimate_frequency = 1;
-            controller_.set_frequency(update_frequency, estimate_frequency);
+            int parameter_update_frequency = 8;
+            int system_update_frequency = 4;
+            controller_.set_frequency(parameter_update_frequency, system_update_frequency);
 
             controller_.set_covariance(covariance);
 
             // States and Inputs
-            desired_state_ = VectorXd::Zero(output_dim);
-            desired_state_ << desired_angle, 0.0;
+            desired_state_ = VectorXd::Zero(state_dim);
+            desired_state_(0) = desired_angle;
 
-            current_state = VectorXd::Zero(output_dim);
+            current_state = VectorXd::Zero(state_dim);
             prev_input = VectorXd::Zero(input_dim);
 
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -61,11 +62,8 @@ class PendulumControlNode : public rclcpp::Node
 
         void control(const sensor_msgs::msg::JointState::SharedPtr msg){
 
-            if(msg->velocity.empty()) {
-                RCLCPP_ERROR(this->get_logger(), "No velocity data in joint_states! Check your simulation/robot configuration.");
-                return;
-            }
-            current_state << msg->position.at(0), msg->velocity.at(0);
+            current_state(0) = wrap(msg->position.at(0));
+            //current_state(1) = msg->velocity.at(0);
             VectorXd input = controller_.compute_input(desired_state_, current_state, prev_input);
             prev_input = input;
 
@@ -75,11 +73,12 @@ class PendulumControlNode : public rclcpp::Node
                 control_msg.data[i] = input(i);
             }
             torque_pub_->publish(control_msg);
+
         }
 
         void feedback(){
 
-            VectorXd Theta = controller_.get_theta();
+            MatrixXd Theta = controller_.get_theta();
             MatrixXd Cov = controller_.get_covariance();
             auto msg = rover_control::msg::Params();
 
@@ -96,6 +95,14 @@ class PendulumControlNode : public rclcpp::Node
             }
 
             params_pub_->publish(msg);
+        }
+
+        double wrap(double x){
+          double pi = M_PI;
+          x = fmod(x + pi,2*pi);
+          if (x < 0)
+              x += 2*pi;
+          return x - pi;
         }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;

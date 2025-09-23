@@ -560,7 +560,7 @@ classdef Robot < handle
 
             % Animation loop
             skip_factor = max(1, floor(num_frames / 1000));
-            fprintf('Animation skip factor: %d (showing every %d frames)\n', skip_factor, skip_factor);
+            % fprintf('Animation skip factor: %d (showing every %d frames)\n', skip_factor, skip_factor);
             
             for i = 1:skip_factor:num_frames
                 % Update joint angles

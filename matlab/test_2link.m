@@ -2,8 +2,8 @@
 clear; clc; close all;
 
 %% Robot Parameters
-L1 = 1.0;
-L2 = 1.0;
+L1 = 0.5;
+L2 = 0.5;
 m1 = 5.0;
 m2 = 5.0;
 q1_0 = pi;
@@ -13,25 +13,27 @@ robot = Robot([L1, L2], [m1, m2], [q1_0, q2_0]);
 fprintf('Robot created successfully with %d links\n', robot.numLinks);
 
 %% Controller Parameters
-num_joints = 2;
-input_history_dim = 1;     
-output_history_dim = 2;   
+% Desired Angle
+goal_angle = pi;
 
-lambda = 0.70;             
-goal_angle1 = pi;
-goal_angle2 = pi/2;
+% Parameters to Tune
+lambda = 0.99;            
+% lambda = 0.75; 
 
-max_torque = 15.0; % [Nm]
+max_torque = 5.0; % [Nm]
+param_update_freq = 12;
+system_estimate_freq = 2;
 
-param_update_freq = 20;
-system_estimate_freq = 4;
+% One Link Pendulum
+state_dim = 2;
+input_dim = 2;
+input_history = 1;     
+state_history = 4;      
+covariance = 1e4;
+goal_state = [goal_angle; 0.0];
 
-goal_state = [goal_angle1; goal_angle2];
-initial_covariance = 100000;
-
-controller = SelfTuningRegulator(num_joints, input_history_dim, output_history_dim, ...
-                             lambda, goal_state, initial_covariance, param_update_freq, system_estimate_freq);
-
+controller = SelfTuningRegulator(state_dim, input_dim, state_history, ...
+    input_history, lambda, covariance, param_update_freq, system_estimate_freq );
 %% Simulation Parameters
 dt = 0.01;
 T_sim = 50.0;
@@ -65,33 +67,31 @@ for i = 1:N_steps
 
     % Compute torque
     try
-        current_angles = [q];
-        previous_inputs = [tau];
-        
-        tau_new = controller.computeControl(current_angles, previous_inputs);
+        current_angles = q;
+        previous_inputs = tau;
+
+        tau_new = controller.computeControl(goal_state, current_angles, previous_inputs);
         tau = tau_new;
         
         % Limit torques
-        tau = max(-max_torque, min(max_torque, tau)); % Element-wise for both joints
+        tau = max(-max_torque, min(max_torque, tau));
         
     catch ME
         fprintf('Controller error at step %d: %s\n', i, ME.message);
-        tau = [0.0; 0.0]; % Fallback to no control for both joints
+        tau = [0.0; 0.0];
     end
-    
-    % Simulate one time step
+  
     try
         [q_next, q_dot_next] = robot.simulateStep(q, q_dot, tau, dt);
         q = q_next;
         q_dot = q_dot_next;
-        q = wrapTo2Pi(q);
+        q = wrapToPi(q);
 
     catch ME
         fprintf('Simulation error at step %d: %s\n', i, ME.message);
         break;
     end
     
-    % Progress indicator
     if mod(i, round(N_steps/10)) == 0
         error1_deg = rad2deg(abs(q(1) - goal_state(1)));
         error2_deg = rad2deg(abs(q(2) - goal_state(2)));
@@ -101,6 +101,9 @@ for i = 1:N_steps
 end
 
 fprintf('Simulation completed!\n');
+
+%% Controller Results
+controller.showResults();
 
 %% Display Results
 fprintf('\n=== 2-LINK CONTROL RESULTS ===\n');

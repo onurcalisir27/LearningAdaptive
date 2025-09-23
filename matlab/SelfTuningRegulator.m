@@ -1,47 +1,41 @@
 classdef SelfTuningRegulator < handle
     properties
-        lambda_ % forgetting factor
-        goal_state_ % desired goal state []
-
-    end
-
-    properties (Access = private)
+        
         curr_state_ % Current joint angles vector
-        prev_state_ % Previous joint angles vector
-        prev_input_ % Previous inputs vector
+        prev_states_ % Previous joint angles vector
+        prev_inputs_ % Previous inputs vector
 
-        Theta_; % Parameter vector
-        phi_    % History vector
-        Phi_;   % History matrix
-        P_;     % Covariance matrix
-        L_;     % Gain matrix
-        A_;     % State matrix
-        B_;     % Input matrix
+        Theta_;  % Parameter vector
+        phi_;    % History vector
+        P_;      % Covariance matrix
+        L_;      % Gain matrix
+        lambda_ % forgetting factor
+        
+        A_;      % State matrix
+        B_;      % Input matrix
+        Bpast_   % Past Input matrix
+        Bc_         
 
-        num_joints_;
-        n_ % input history size
-        m_ % output history size
-        p; % system dimension
-        r; % history dimension
+        n_;      % state dimension
+        m_;      % input dimension
+        p_;      % state history
+        r_;      % input history
+        s_;      % system dimension
 
         % Frequency control for parameter updates
-        update_counter_;
+        step_;
         update_frequency_;
         estimate_frequency_;
 
     end
-
     methods
-        function this = SelfTuningRegulator(joints, input_dim, output_dim, lambda, goal_state, covariance, update_freq, estimate_freq)
+        function this = SelfTuningRegulator(state_dim, input_dim, state_history, input_history, lambda, covariance, update_freq, estimate_freq)
 
-            this.num_joints_ = joints;
-            this.lambda_ = lambda;
-            this.goal_state_ = goal_state;
+            this.n_ = state_dim;
             this.m_ = input_dim;
-            this.n_ = output_dim;
-
-            this.r = this.num_joints_ * this.n_ + this.num_joints_ * this.m_; % output size * n + input_size * m
-            this.p = this.num_joints_ * this.r;
+            this.p_ = state_history;
+            this.r_ = input_history;
+            this.s_ = this.n_ * this.p_ + this.m_ * this.r_;
 
             % Set default frequencies
             if nargin < 7 || isempty(update_freq)
@@ -56,24 +50,24 @@ classdef SelfTuningRegulator < handle
                 this.estimate_frequency_ = estimate_freq;
             end
 
-            this.update_counter_ = 0;
+            this.step_ = 0;
+            this.lambda_ = lambda;
 
-            this.curr_state_ = zeros(this.num_joints_, 1);
-            this.prev_state_ = zeros(this.num_joints_*this.n_, 1);
-
-            this.prev_input_ = zeros(this.num_joints_*this.m_, 1);
+            this.curr_state_ = zeros(this.n_, 1);
+            this.prev_states_ = zeros(this.n_ * this.p_, 1);
+            this.prev_inputs_ = zeros(this.m_ * this.r_, 1);
 
             % Parameter estimators
-            this.Theta_ = 0.5 * ones(this.p, 1);
-            this.phi_ = zeros(this.r, 1);
-            this.Phi_ = zeros(this.num_joints_, this.p);
-
-            this.L_ = zeros(this.p, this.num_joints_);
-            this.P_ = covariance * eye(this.p);
+            this.Theta_ = 0.1 * ones(this.s_, this.n_);
+            this.phi_ = zeros(this.s_, 1);
+            this.L_ = zeros(this.s_, 1);
+            this.P_ = covariance * eye(this.s_);
 
             % State matrices
-            this.A_ = zeros(this.num_joints_, this.num_joints_*this.n_);
-            this.B_ = zeros(this.num_joints_, this.num_joints_*this.m_);
+            this.A_ = zeros(this.n_, this.n_*this.p_);
+            this.B_ = zeros(this.n_, this.m_*this.r_);
+            this.Bpast_ = zeros(this.n_, this.m_ * (this.r_ - 1));
+            this.Bc_ = zeros(this.n_, this.m_);
 
             fprintf('Self-tuning regulator initialized');
         end
@@ -81,106 +75,91 @@ classdef SelfTuningRegulator < handle
         function update(this)
 
             % Update Gain
-            denL = this.lambda_ * eye(this.num_joints_) + this.Phi_ * this.P_ * this.Phi_';
+            denL = this.lambda_ + this.phi_' * this.P_ * this.phi_;
 
             % Add regularization to prevent singularity
-            if rcond(denL) < 1e-12
-                denL = denL + 1e-6 * eye(size(denL));
+            if abs(denL) < 1e-12
+                denL = denL + 1e-6;
             end
 
-            this.L_ = (this.P_ * this.Phi_') / denL;
+            this.L_ = (this.P_ * this.phi_) / denL;
 
-            % update Parameter
-            prediction_error = this.curr_state_ - this.Phi_ * this.Theta_;
-            this.Theta_ = this.Theta_ + this.L_ * prediction_error;
+            % update Parameters
+            prediction_error = this.curr_state_ - this.Theta_' * this.phi_;
+            this.Theta_ = this.Theta_ + this.L_ * prediction_error';
 
             % Bound parameters
             this.Theta_ = max(-10, min(10, this.Theta_));
 
             % update Covariance
-            this.P_ = (this.P_ - this.L_ * this.Phi_ * this.P_) / this.lambda_;
+            this.P_ = (this.P_ - this.L_ * this.phi_' * this.P_) / this.lambda_;
 
             % Ensure P remains positive definite
             [V, D] = eig(this.P_);
-            D = diag(max(diag(D), 1e-6));  % Ensure positive eigenvalues
+            D = diag(max(diag(D), 1e-6));
             this.P_ = V * D * V';
-
         end
 
-        function estimate(this)
+        function input = computeControl(this, goal_state, state, prev_input)
 
-            % Construct A and B from Theta
-            for i = 0:(this.num_joints_-1)
-                this.A_(i+1, 1:this.num_joints_*this.n_) = this.Theta_(i*this.r + 1 : i*this.r + this.num_joints_*this.n_);
-                this.B_(i+1, 1:this.num_joints_*this.m_) = this.Theta_(i*this.r + this.num_joints_*this.n_ + 1 : (i+1)*this.r);
-            end
-        end
-
-        function construct_phi(this, angles, inputs)
-
-            this.curr_state_ = angles;
-
-            % Constructing the phi vector from previous history
-            this.phi_ = [this.prev_state_; this.prev_input_];
-
-            % updating the previous history with new feedback
-            this.prev_state_ = [this.curr_state_; this.prev_state_];
-            this.prev_state_ = this.prev_state_(1:this.num_joints_*this.n_);
-
-            this.prev_input_ = [inputs; this.prev_input_];
-            this.prev_input_ = this.prev_input_(1:this.num_joints_*this.m_);
-
-            % Construct the Phi Matrix from phi vector
-            for i = 1 : this.num_joints_
-                this.Phi_(i, (1+(i-1)*this.r) : i*this.r) = this.phi_;
+            if length(state) ~= this.n_ || length(prev_input) ~= this.m_
+                error('Wrong dimensions! angles and inputs must be %d-element vectors', this.n_, this.m_);
             end
 
-        end
+            % Store current state for parameter update
+            this.curr_state_ = state;
 
-        function input = computeControl(this, angles, inputs)
-
-            if length(angles) ~= this.num_joints_ || length(inputs) ~= this.num_joints_
-                error('Wrong dimensions! angles and inputs must be %d-element vectors', this.num_joints_);
-            end
-
-            % Increment counter
-            this.update_counter_ = this.update_counter_ + 1;
-
-            % Always append new variables and construct the History matrix
-            this.construct_phi(angles, inputs);
+            % Always append new variables and construct the vector
+            this.phi_ = [this.prev_states_; this.prev_inputs_];
+            this.prev_states_ = [state; this.prev_states_(1:this.n_*(this.p_-1))];
+            this.prev_inputs_ = [prev_input; this.prev_inputs_(1:this.m_*(this.r_-1))];
 
             % Update System Matrices
-            if mod(this.update_counter_, this.estimate_frequency_) == 0
-                this.estimate();
+            if mod(this.step_, this.estimate_frequency_) == 0
+                params = this.Theta_';
+                this.A_ = params(1:this.n_, 1:(this.n_*this.p_));
+                this.B_ = params(1:this.n_, (this.n_*this.p_+1):(this.n_*this.p_+this.m_*this.r_));
+                if this.r_ > 1
+                    this.Bpast_ = this.B_(1:this.n_, (this.m_+1):this.m_*this.r_);
+                end
+
             end
 
             % Control Effort
-            noise = 0.005*(1 - rand(1));
-            % noise = 0;
-            input = this.OneStepAheadController() + noise;
+            % noise = 0.005*rand(this.m_, 1);
+            noise = 0;
+            input = this.OneStepAheadController(goal_state) + noise;
 
             % Update Parameter Estimation
-            if mod(this.update_counter_, this.update_frequency_) == 0
+            if mod(this.step_, this.update_frequency_) == 0
                 this.update();
             end
 
+            % Increment counter
+            this.step_ = this.step_ + 1;
         end
 
-        function input = OneStepAheadController(this)
+        function input = OneStepAheadController(this, goal_state)
 
             % yd = Ax + Bu
             % Bu = yd - Ax --> u = B^-1 (yd - Ax)
             try
                 % Compute desired control input
-                error_signal = this.goal_state_ - this.A_ * this.prev_state_;
+                estimated_state = this.A_*this.prev_states_;
+                if this.r_ > 1
+                    estimated_state = estimated_state + this.Bpast_*this.prev_inputs_(this.m_+1:this.r_*this.m_);
+                end 
+                
+                error_signal = goal_state - estimated_state;
 
                 % Check if B matrix is well-conditioned
-                if rank(this.B_) < size(this.B_, 2)
+                this.Bc_ = this.B_(1:this.n_, 1:this.m_);
+                if rank(this.Bc_) < size(this.Bc_, 2)
                     % B matrix is rank deficient, use pseudo-inverse
-                    input = pinv(this.B_) * error_signal;
+                    input = pinv(this.Bc_) * error_signal;
                 else
                     % B matrix is full rank, use normal solution
-                    input = this.B_ \ error_signal;
+                    input = this.Bc_ \ error_signal;
                 end
 
                 % Ensure output is finite
@@ -191,9 +170,57 @@ classdef SelfTuningRegulator < handle
             catch ME
                 % If anything fails, return zero control
                 fprintf('OneStepAheadController error: %s\n', ME.message);
-                input = zeros(this.num_joints_, 1);
+                input = zeros(this.m_, 1);
             end
 
+        end
+
+        function showResults(this)
+            fprintf('\n=== SELF-TUNING REGULATOR RESULTS ===\n');
+            fprintf('Total steps completed: %d\n', this.step_);
+            fprintf('Lambda (forgetting factor): %.3f\n', this.lambda_);
+            fprintf('Update frequency: %d steps\n', this.update_frequency_);
+            fprintf('Estimate frequency: %d steps\n', this.estimate_frequency_);
+
+            fprintf('\nSystem Dimensions:\n');
+            fprintf('  State dimension (n): %d\n', this.n_);
+            fprintf('  Input dimension (m): %d\n', this.m_);
+            fprintf('  State history (p): %d\n', this.p_);
+            fprintf('  Input history (r): %d\n', this.r_);
+            fprintf('  Total parameters (s): %d\n', this.s_);
+
+            fprintf('\nLearned System Matrices:\n');
+            fprintf('State Matrix A (%dx%d):\n', size(this.A_, 1), size(this.A_, 2));
+            disp(this.A_);
+
+            fprintf('Input Matrix B (%dx%d):\n', size(this.B_, 1), size(this.B_, 2));
+            disp(this.B_);
+
+            if this.r_ > 1
+                fprintf('Past Input Matrix Bpast (%dx%d):\n', size(this.Bpast_, 1), size(this.Bpast_, 2));
+                disp(this.Bpast_);
+            end
+
+            fprintf('Current Input Matrix Bc (%dx%d):\n', size(this.Bc_, 1), size(this.Bc_, 2));
+            disp(this.Bc_);
+
+            fprintf('\nParameter Estimation Results:\n');
+            fprintf('Parameter Matrix Theta (%dx%d):\n', size(this.Theta_, 1), size(this.Theta_, 2));
+            disp(this.Theta_);
+
+            fprintf('Covariance Matrix P (condition number: %.2e):\n', cond(this.P_));
+            fprintf('  P matrix size: %dx%d\n', size(this.P_, 1), size(this.P_, 2));
+            fprintf('  P eigenvalues range: [%.2e, %.2e]\n', min(eig(this.P_)), max(eig(this.P_)));
+
+            fprintf('\nCurrent State Information:\n');
+            fprintf('Current state:\n');
+            disp(this.curr_state_');
+            fprintf('Previous states (history):\n');
+            disp(this.prev_states_');
+            fprintf('Previous inputs (history):\n');
+            disp(this.prev_inputs_');
+            fprintf('Current phi vector:\n');
+            disp(this.phi_');
         end
 
     end
