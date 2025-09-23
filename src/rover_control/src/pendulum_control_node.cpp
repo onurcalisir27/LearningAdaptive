@@ -20,6 +20,15 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("desired_angle", 0.0);
             double desired_angle = this->get_parameter("desired_angle").as_double();
 
+            this->declare_parameter("u_bound", 10.0);
+            double input_bound = this->get_parameter("u_bound").as_double();
+
+            this->declare_parameter("p_update", 20);
+            int parameter_update_frequency = this->get_parameter("p_update").as_int();
+
+            this->declare_parameter("s_update", 4);
+            int system_update_frequency = this->get_parameter("s_update").as_int();
+
             // Controller Parameters
             int state_history = 2;
             int state_dim = 1;
@@ -30,15 +39,9 @@ class PendulumControlNode : public rclcpp::Node
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
             // Set the bounds
-            double theta_bound = 5.0;
-            double input_bound = 20.0;
+            double theta_bound = 3.0;
             controller_.set_bounds(theta_bound, input_bound);
-
-            // Frequency rates
-            int parameter_update_frequency = 8;
-            int system_update_frequency = 4;
-            controller_.set_frequency(parameter_update_frequency, system_update_frequency);
-
+            controller_.set_frequency(parameter_update_frequency,system_update_frequency);
             controller_.set_covariance(covariance);
 
             // States and Inputs
