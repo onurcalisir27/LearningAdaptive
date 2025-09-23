@@ -126,7 +126,7 @@ VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current
     VectorXd gamma = desired - A_ * p_states_ - B_old * old_inputs;
     // std::cout << "System error: \n" << gamma << std::endl;
 
-    VectorXd noise = 0.01 * VectorXd::Random(m_);
+    VectorXd noise = 0.0001 * VectorXd::Random(m_);
     VectorXd input = step_ahead_control(gamma) + noise;
 
     p_inputs_ << input, old_inputs;
