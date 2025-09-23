@@ -1,0 +1,9 @@
+<library path="autonomous_rover">
+    <class name="autonomous_rover/AutonomousRoverHardware"
+           type="autonomous_rover::AutonomousRoverHardware"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            4 Wheel Differential Drive Rover Control with Raspberry Pi 4B GPIO pins
+        </description>    
+    </class>
+</library>
