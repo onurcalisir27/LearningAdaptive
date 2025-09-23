@@ -29,16 +29,16 @@
   </gazebo>
 
   <gazebo>
-    <plugin filename="gz-sim-joint-state-publisher-system" 
+    <plugin filename="gz-sim-joint-state-publisher-system"
             name="gz::sim::systems::JointStatePublisher">
       <joint_name>pendulum_joint</joint_name>
       <topic>joint_states</topic>
-      <update_rate>50</update_rate>
+      <update_rate>20</update_rate>
     </plugin>
   </gazebo>
 
   <gazebo>
-    <plugin filename="gz_ros2_control-system" 
+    <plugin filename="gz_ros2_control-system"
             name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find rover_control)/config/pendulum_controller.yaml</parameters>
     </plugin>

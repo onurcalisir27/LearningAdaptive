@@ -14,8 +14,16 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 include_directories(include)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Params.msg"
+)
+
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} rosidl_typesupport_cpp)
 
 add_executable(pendulum_control_node src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
 
@@ -28,7 +36,7 @@ target_include_directories(pendulum_control_node
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(pendulum_control_node Eigen3::Eigen)
+target_link_libraries(pendulum_control_node Eigen3::Eigen ${cpp_typesupport_target})
 
 add_executable(pendulum_node src/pendulum_node.cpp )
 
@@ -43,9 +51,37 @@ target_include_directories(pendulum_node
 
 target_link_libraries(pendulum_node Eigen3::Eigen)
 
+# Include Planner Node
+add_executable(planner_node src/planner_node.cpp src/astar.cpp)
+
+ament_target_dependencies(planner_node
+  rclcpp
+  sensor_msgs
+  nav_msgs
+  geometry_msgs
+)
+target_include_directories(planner_node
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Include Controller Node
+add_executable(control_node src/control_node.cpp)
+
+ament_target_dependencies(control_node
+  rclcpp
+  nav_msgs
+  geometry_msgs
+)
+target_include_directories(control_node
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(control_node Eigen3::Eigen)
 
 install(
-  DIRECTORY description launch config worlds
+  DIRECTORY description launch config worlds src rviz
   DESTINATION share/${PROJECT_NAME}
   USE_SOURCE_PERMISSIONS
 )
@@ -53,7 +89,10 @@ install(
 install(TARGETS
     pendulum_control_node
     pendulum_node
+    planner_node
+    control_node
     DESTINATION lib/${PROJECT_NAME}
 )
+
 
 ament_package()

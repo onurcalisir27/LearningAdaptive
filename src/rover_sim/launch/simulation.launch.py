@@ -11,9 +11,8 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     pkg_share = get_package_share_directory('rover_sim')
     urdf_file = os.path.join(pkg_share, 'description', 'robot.urdf.xacro')
-    world_file = os.path.join(pkg_share, 'worlds', 'lab2office.sdf')
+    world_file = os.path.join(pkg_share, 'worlds', 'test.sdf')
     ekf_file = os.path.join(pkg_share, 'config', 'ekf.yaml')
-                                   
     robot_description = Command(['xacro ', urdf_file])
     params = {
         'robot_description': ParameterValue(
@@ -44,7 +43,6 @@ def generate_launch_description():
             launch_arguments={
                 'gz_args': f'-r -s -v1 {world_file}',
                 'on_exit_shutdown': 'true',
-                'gui': 'false'
             }.items()
         ),
 
@@ -81,9 +79,7 @@ def generate_launch_description():
                     executable='spawner',
                     arguments=['rover_control', '--controller-manager', '/controller_manager'],
                     output='screen',
-                    remappings=[
-                            ('/rover_control/cmd_vel_out', '/cmd_vel'),  
-                    ]
+                    remappings=[]
                 )
             ]
         ),
@@ -102,7 +98,7 @@ def generate_launch_description():
                 'use_sim_time': True
             }]
         ),
-        
+
         # ROS-Gazebo Topic Sharing
         Node(
             package='ros_gz_bridge',
@@ -112,7 +108,7 @@ def generate_launch_description():
                 "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
                 # RGB image
                 "/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
-                # Depth image  
+                # Depth image
                 "/camera/depth_image@sensor_msgs/msg/Image@gz.msgs.Image",
                 # Camera info
                 "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",

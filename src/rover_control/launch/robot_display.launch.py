@@ -6,14 +6,14 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    
+
     # Get the path to your URDF file
     pkg_share = get_package_share_directory('rover_control')
-    xacro_file = os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')
-    
+    xacro_file = os.path.join(pkg_share, 'description', 'pendulum_free.urdf.xacro')
+
     # Process the URDF file using Command substitution
     robot_description_config = Command(['xacro ', xacro_file])
-    
+
     # Create robot_state_publisher node parameters
     params = {
         'robot_description': ParameterValue(
@@ -31,14 +31,14 @@ def generate_launch_description():
             output='screen',
             parameters=[params]
         ),
-        
+
         Node(
             package='joint_state_publisher_gui',
             executable='joint_state_publisher_gui',
             name='joint_state_publisher_gui',
             output='screen'
         ),
-        
+
         # Launch RViz
         Node(
             package='rviz2',
