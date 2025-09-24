@@ -8,15 +8,15 @@ robot = Robot([L1], [m1], [q0]);
 
 %% Controller Parameters
 % Desired Angle
-goal_angle = pi - 0.8;
+goal_angle = 0.5;
 
 % Parameters to Tune
-% lambda = 0.92;            
+% lambda = 0.98;            
 lambda = 0.75; 
 
 max_torque = 20.0; % [Nm]
-param_update_freq = 20;
-system_estimate_freq = 4;
+param_update_freq = 1;
+system_estimate_freq = 1;
 
 % One Link Pendulum
 state_dim = 1;
@@ -29,7 +29,7 @@ controller = SelfTuningRegulator(state_dim, input_dim, state_history, ...
     input_history, lambda, covariance, param_update_freq, system_estimate_freq );
 %% Simulation Parameters
 dt = 0.01;
-T_sim = 50.0;
+T_sim = 100.0;
 N_steps = round(T_sim / dt);
 
 q = q0;

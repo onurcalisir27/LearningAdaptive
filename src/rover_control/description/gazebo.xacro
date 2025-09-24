@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <gazebo reference="base_link">
+ <gazebo reference="base_link">
     <mu1>1.0</mu1>
     <mu2>1.0</mu2>
     <static>true</static>
@@ -10,8 +10,8 @@
   </gazebo>
 
   <gazebo reference="pendulum_link">
-    <mu1>0.2</mu1>
-    <mu2>0.2</mu2>
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
     <kp>1000000.0</kp>
     <kd>100.0</kd>
   </gazebo>
@@ -21,11 +21,11 @@
       <ode>
         <implicit_spring_damper>true</implicit_spring_damper>
         <cfm_damping>true</cfm_damping>
-        <cfm>0.000001</cfm>
+        <cfm>0.00001</cfm>
         <erp>0.2</erp>
       </ode>
     </physics>
-    <dynamics damping="0.02" friction="0.01"/>
+    <dynamics damping="0.5" friction="0.5"/>
   </gazebo>
 
   <gazebo>
@@ -33,7 +33,7 @@
             name="gz::sim::systems::JointStatePublisher">
       <joint_name>pendulum_joint</joint_name>
       <topic>joint_states</topic>
-      <update_rate>20</update_rate>
+      <update_rate>1000</update_rate>
     </plugin>
   </gazebo>
 

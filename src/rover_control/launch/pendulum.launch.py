@@ -43,23 +43,16 @@ def generate_launch_description():
         description='Control Input bound for the controller'
     )
 
-    parameter_update_arg = DeclareLaunchArgument(
-        'p_update',
+    update_arg = DeclareLaunchArgument(
+        'update_freq',
         default_value='20.0',
         description='System ID Parameter Update Frequency'
-    )
-
-    system_update_arg = DeclareLaunchArgument(
-        's_update',
-        default_value='4.0',
-        description='System Parameters Update Frequency'
     )
 
     forgetting_factor = LaunchConfiguration('forgetting_factor')
     desired_angle = LaunchConfiguration('desired_angle')
     u_bound = LaunchConfiguration('u_bound')
-    p_update = LaunchConfiguration('p_update')
-    s_update = LaunchConfiguration('s_update')
+    update_freq = LaunchConfiguration('update_freq')
 
     urdf_pub = Node(
         package='robot_state_publisher',
@@ -136,15 +129,15 @@ def generate_launch_description():
             'forgetting_factor': forgetting_factor,
             'desired_angle': desired_angle,
             'u_bound': u_bound,
-            'p_update': p_update,
-            's_update': s_update
+            'update_freq': update_freq,
+
         }]
     )
 
     delay_str = TimerAction(
         period=12.0,
         actions=[forgetting_factor_arg, desired_angle_arg,
-                 u_bound_arg, parameter_update_arg, system_update_arg,
+                 u_bound_arg, update_arg,
                  str_node]
     )
 

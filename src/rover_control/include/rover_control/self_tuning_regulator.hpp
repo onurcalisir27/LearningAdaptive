@@ -16,18 +16,28 @@ class SelfTuningRegulator{
 
         void reset();
 
-        void set_frequency(int& param_freq, int& system_freq);
+        void set_frequency(int& freq);
 
         void set_bounds(double& param_bound, double& control_bound);
 
         void set_covariance(double& initial_covariance);
 
-        MatrixXd get_theta() {return Theta_;}
+        void set_theta(MatrixXd Theta_desired){Theta_ = Theta_desired;}
 
-        MatrixXd get_covariance() {return Cov_;}
+        void set_gain(VectorXd K_desired){K_ = K_desired;}
 
-        VectorXd get_phi() {return phi_;}
+        MatrixXd const get_theta() {return Theta_;}
 
+        MatrixXd const get_covariance() {return Cov_;}
+
+        VectorXd const get_phi() {return phi_;}
+
+        double get_error(const VectorXd& desired);
+
+        //**
+        // @brief:
+        // @params:
+        //
         VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input);
 
     private:
@@ -49,8 +59,7 @@ class SelfTuningRegulator{
 
         // Update frequencies
         int step_;
-        int parameter_update_freq_;
-        int system_update_freq_;
+        int update_freq_;
 
         // Forgetting Factor
         double lambda_;
@@ -62,7 +71,7 @@ class SelfTuningRegulator{
         VectorXd phi_;
         VectorXd p_states_, p_inputs_;
 
-        // Kalman Gain
+        // Gain
         VectorXd K_;
 
         // Covariance Matrix

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <memory>
 #include <Eigen/Dense>
+#include <vector>
 using namespace std::chrono_literals;
 
 class PendulumControlNode : public rclcpp::Node
@@ -23,26 +24,27 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("u_bound", 10.0);
             double input_bound = this->get_parameter("u_bound").as_double();
 
-            this->declare_parameter("p_update", 20);
-            int parameter_update_frequency = this->get_parameter("p_update").as_int();
-
-            this->declare_parameter("s_update", 4);
-            int system_update_frequency = this->get_parameter("s_update").as_int();
+            this->declare_parameter("update_freq", 20);
+            int update_frequency = this->get_parameter("update_freq").as_int();
 
             // Controller Parameters
             int state_history = 2;
             int state_dim = 1;
-            int input_history = 1;
+            int input_history = 2;
             int input_dim = 1;
             double covariance = 1e6;
             controller_.init(state_dim, input_dim, state_history, input_history, lambda);
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
             // Set the bounds
-            double theta_bound = 3.0;
+            double theta_bound = 10.0;
             controller_.set_bounds(theta_bound, input_bound);
-            controller_.set_frequency(parameter_update_frequency,system_update_frequency);
+            controller_.set_frequency(update_frequency);
             controller_.set_covariance(covariance);
+
+            // MatrixXd Theta_i(4,1);
+            // Theta_i << -1.0, 1.0, 0.1, 0.1;
+            // controller_.set_theta(Theta_i);
 
             // States and Inputs
             desired_state_ = VectorXd::Zero(state_dim);
@@ -56,7 +58,7 @@ class PendulumControlNode : public rclcpp::Node
 
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
             params_pub_ = this->create_publisher<rover_control::msg::Params>("params", 10);
-            params_timer_ = this->create_wall_timer(100ms, std::bind(&PendulumControlNode::feedback, this));
+            params_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::feedback, this));
 
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
         }
@@ -66,7 +68,6 @@ class PendulumControlNode : public rclcpp::Node
         void control(const sensor_msgs::msg::JointState::SharedPtr msg){
 
             current_state(0) = wrap(msg->position.at(0));
-            //current_state(1) = msg->velocity.at(0);
             VectorXd input = controller_.compute_input(desired_state_, current_state, prev_input);
             prev_input = input;
 
@@ -77,6 +78,8 @@ class PendulumControlNode : public rclcpp::Node
             }
             torque_pub_->publish(control_msg);
 
+            auto error = controller_.get_error(desired_state_);
+            process_errors.push_back(error);
         }
 
         void feedback(){
@@ -98,14 +101,23 @@ class PendulumControlNode : public rclcpp::Node
             }
 
             params_pub_->publish(msg);
+            error_metrics();
         }
 
+        void error_metrics(){
+            double total_error=0.0;
+            for(auto element : process_errors){
+              total_error += element;
+            }
+            double ave_error = total_error / process_errors.size();
+            std::cout << "Average Error of this run was: " << ave_error << std::endl;
+
+        }
         double wrap(double x){
-          double pi = M_PI;
-          x = fmod(x + pi,2*pi);
+          x = fmod(x + M_PI, 2.00 * M_PI);
           if (x < 0)
-              x += 2*pi;
-          return x - pi;
+              x += 2.00 * M_PI;
+          return x - M_PI;
         }
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
@@ -117,6 +129,8 @@ class PendulumControlNode : public rclcpp::Node
         VectorXd current_state;
         VectorXd prev_input;
         VectorXd desired_state_;
+        std::vector<double> process_errors;
+
 };
 
 
