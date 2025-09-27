@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 1000
+    update_rate: 100
 
     pendulum_controller:
       type: effort_controllers/JointGroupEffortController

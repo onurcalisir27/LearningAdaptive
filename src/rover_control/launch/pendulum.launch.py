@@ -24,6 +24,23 @@ def generate_launch_description():
         ),
         'use_sim_time': True
     }
+    p_controller_arg = DeclareLaunchArgument(
+        'kp',
+        default_value='0.0',
+        description='Proportional Gain'
+    )
+
+    i_controller_arg = DeclareLaunchArgument(
+        'ki',
+        default_value='0.0',
+        description='Integral Gain'
+    )
+
+    d_controller_arg = DeclareLaunchArgument(
+        'kd',
+        default_value='0.0',
+        description='Derivative Gain'
+    )
 
     forgetting_factor_arg = DeclareLaunchArgument(
         'lambda',
@@ -39,20 +56,23 @@ def generate_launch_description():
 
     u_bound_arg = DeclareLaunchArgument(
         'u_bound',
-        default_value='0.0',
+        default_value='30.0',
         description='Control Input bound for the controller'
     )
 
     update_arg = DeclareLaunchArgument(
         'update_freq',
-        default_value='20.0',
+        default_value='1',
         description='System ID Parameter Update Frequency'
     )
 
-    forgetting_factor = LaunchConfiguration('forgetting_factor')
+    lambda_ = LaunchConfiguration('lambda')
     desired_angle = LaunchConfiguration('desired_angle')
     u_bound = LaunchConfiguration('u_bound')
     update_freq = LaunchConfiguration('update_freq')
+    kp = LaunchConfiguration('kp')
+    ki = LaunchConfiguration('ki')
+    kd = LaunchConfiguration('kd')
 
     urdf_pub = Node(
         package='robot_state_publisher',
@@ -126,19 +146,22 @@ def generate_launch_description():
         executable='pendulum_control_node',
         output='screen',
         parameters=[{
-            'forgetting_factor': forgetting_factor,
+            'lambda': lambda_,
             'desired_angle': desired_angle,
             'u_bound': u_bound,
             'update_freq': update_freq,
-
+            'kp': kp,
+            'ki': ki,
+            'kd': kd,
+            'use_sim_time': True
         }]
     )
 
     delay_str = TimerAction(
-        period=12.0,
+        period=15.0,
         actions=[forgetting_factor_arg, desired_angle_arg,
-                 u_bound_arg, update_arg,
-                 str_node]
+                 u_bound_arg, update_arg, p_controller_arg,
+                 i_controller_arg, d_controller_arg, str_node]
     )
 
     ld = LaunchDescription()

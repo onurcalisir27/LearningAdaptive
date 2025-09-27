@@ -1,7 +1,8 @@
 #ifndef SELF_TUNING_REGULATOR_HPP
 #define SELF_TUNING_REGULATOR_HPP
 #include <Eigen/Dense>
-
+#include <tuple>
+#include <chrono>
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -22,9 +23,11 @@ class SelfTuningRegulator{
 
         void set_covariance(double& initial_covariance);
 
-        void set_theta(MatrixXd Theta_desired){Theta_ = Theta_desired;}
+        void set_theta(MatrixXd& Theta_desired){Theta_ = Theta_desired;}
 
-        void set_gain(VectorXd K_desired){K_ = K_desired;}
+        void set_gain(VectorXd& K_desired){K_ = K_desired;}
+
+        void update_forgetting_factor(double& forgettingfactor);
 
         MatrixXd const get_theta() {return Theta_;}
 
@@ -32,14 +35,17 @@ class SelfTuningRegulator{
 
         VectorXd const get_phi() {return phi_;}
 
-        double get_error(const VectorXd& desired);
+        VectorXd get_error(const double& desired, const double& current);
 
         //**
         // @brief:
         // @params:
         //
-        VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input);
+        VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input, std::chrono::duration<double> dt);
+        void set_pid(std::tuple<double,double,double>gains);
+        VectorXd pid_controller(VectorXd& desired, VectorXd& current, std::chrono::duration<double> dt);
 
+        double str(double& desired, double& current, VectorXd& outputs, VectorXd& inputs);
     private:
 
         //Helper Functions
@@ -48,6 +54,8 @@ class SelfTuningRegulator{
         void parameter_estimation(VectorXd& current);
 
         void system_update();
+
+        void rls(VectorXd& current);
 
         void covariance_update();
 
@@ -83,6 +91,11 @@ class SelfTuningRegulator{
 
         // Bound parameters and input values to realistic values
         double theta_bound_, u_bound_;
+
+        // PID params
+        double kp_, kd_, ki_;
+        double p_error;
+        double integral;
 };
 
 #endif // SELF_TUNING_REGULATOR_HPP

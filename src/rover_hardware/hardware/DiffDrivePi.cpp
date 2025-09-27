@@ -4,8 +4,8 @@
 
 /* DiffDrivePi Differential Drive Robot Control using a Raspberry Pi 4*/
 
-// if DiffDrivePi is used, it defaults to allowing verbose debugging 
-DiffDrivePi::DiffDrivePi() 
+// if DiffDrivePi is used, it defaults to allowing verbose debugging
+DiffDrivePi::DiffDrivePi()
 	:   config_(getDefaultConfig()),
 	status_(SysStatus::SLEEP),
         pi_(0),
@@ -23,13 +23,13 @@ DiffDrivePi::DiffDrivePi()
     for (size_t i=0; i < static_cast<size_t>(Encoder::TOTAL); i++){
         encoders_state_[i].count.store(0);
         encoders_state_[i].filtered.store(0);
-        
+
         encoders_state_[i].last_state = 0;
         encoders_state_[i].init = false;
         encoders_state_[i].callback_a_id = -1;
         encoders_state_[i].callback_b_id = -1;
     }
-    
+
     for (size_t i=0; i < static_cast<size_t>(Controller::TOTAL); i++){
         controllers_state_[i].prev_error = 0;
         controllers_state_[i].integral = 0;
@@ -47,14 +47,14 @@ DiffDrivePi::DiffDrivePi(bool allow_debug)
 }
 
 DiffDrivePi::~DiffDrivePi(){
-    // Make sure to explicitly call shutdown before 
+    // Make sure to explicitly call shutdown before
     shutdown();
 }
 
 DiffDrivePi::RobotConfig DiffDrivePi::getDefaultConfig(){
 
     DiffDrivePi::RobotConfig default_config;
-    
+
     /* Read below to get an idea on how to set your config for your robot's requirements
 
     Raspberry Pi 4 and 5 have 4 PWM enabled pins: GPIO PWM0(12, 18) , PWM1(13, 19)
@@ -64,7 +64,7 @@ DiffDrivePi::RobotConfig DiffDrivePi::getDefaultConfig(){
     handle the front and rear motors
 
     Motor configuration follows the following format: {Forward Direction Pin, Reverse Direction Pin, Enable Pin, PWM Frequency}
-    
+
     Choose your minimum velocity required to overcome static friction effects
     Choose your maximum velocity you want your robot to achieve, this will correspond to maximum PWM
 
@@ -76,7 +76,7 @@ DiffDrivePi::RobotConfig DiffDrivePi::getDefaultConfig(){
     */
 
     // Example motor pin configuration using Raspberry pi hardware pins and nearby available GPIO pins
-    
+
     // Direction Pin Forward, Pin Reverse, Power Pin Enable, PWM Frequency
     default_config.motors[0] = {16, 20, 12, 1000};     // Left Motor
     default_config.motors[1] = {5, 6, 13, 1000};       // Right Motor
@@ -88,7 +88,7 @@ DiffDrivePi::RobotConfig DiffDrivePi::getDefaultConfig(){
     default_config.encoders[3] = {22, 27, 1920, 0.205};     // Right Back Encoder
 
     // If encoder is reading (-) values in forward direction, switch pinA and pinB assignments
-    // Can switch in your config or in real life... 
+    // Can switch in your config or in real life...
 
     // Enable Controller, kp, ki, kd, limits-->
     default_config.controllers[0] = {0, 0.0, 0.0, 0.0, 0.0};    // Left Controller
@@ -201,10 +201,10 @@ bool DiffDrivePi::reset(){
 
 bool DiffDrivePi::recover() {
     if (verbose_debug_) {
-        std::cout << "DiffDrivePi: Recovery attempt from state: " 
+        std::cout << "DiffDrivePi: Recovery attempt from state: "
                   << static_cast<int>(status_) << std::endl;
     }
-    
+
     switch(status_) {
         case SysStatus::STOP:
             // If no issues with wire connection, keep going
@@ -213,7 +213,7 @@ bool DiffDrivePi::recover() {
                 return true;
             }
             break;
-            
+
         case SysStatus::ERROR:
             // Try to reinitialize
             if (!pigpio_status_) {
@@ -225,17 +225,17 @@ bool DiffDrivePi::recover() {
                 }
             }
             break;
-            
+
         case SysStatus::READY:
         case SysStatus::RUNNING:
             // Already good
             return true;
-            
+
         case SysStatus::SLEEP:
             // Need full initialization
             return initialize(config_);
     }
-    
+
     return false;
 }
 
@@ -246,7 +246,7 @@ bool DiffDrivePi::setMotorVel(Motor motor, double velocity){
 
     if (!pigpio_status_){
         if (verbose_debug_) {std::cerr << "DiffDrivePi: pigpio is not initialized." << std::endl;}
-        return false;       
+        return false;
     }
 
     // Poll for information before starting to set up
@@ -267,7 +267,7 @@ bool DiffDrivePi::setMotorVel(Motor motor, double velocity){
         motor_status.cmd_pwm = pwm;
 
     } else if (velocity < 0) {
-    
+
         // Else, the velocity is negative, motor in reverse motion
         motor_status.forward = false;
         gpio_write(pi_, motor_config.pinForward, 0);
@@ -288,15 +288,15 @@ bool DiffDrivePi::setMotorVel(Motor motor, double velocity){
 
         motor_status.cmd_pwm = 0;
     }
-    
+
     motor_status.last_cmd_vel = velocity;
 
     if (verbose_debug_) {
         std::cerr << "DiffDrivePi: Velocity Command being executed!" << std::endl;
-        std::cout << "Motor " << static_cast<int>(motor) 
-            << " - Velocity: " << velocity 
-            << " - PWM: " << pwm 
-            << " - Direction: " << (velocity > 0 ? "Forward" : "Reverse") 
+        std::cout << "Motor " << static_cast<int>(motor)
+            << " - Velocity: " << velocity
+            << " - PWM: " << pwm
+            << " - Direction: " << (velocity > 0 ? "Forward" : "Reverse")
             << std::endl;
     }
 
@@ -343,7 +343,7 @@ bool DiffDrivePi::Stop(){
 
         gpio_write(pi_, motor_config.pinForward, 0);
         gpio_write(pi_, motor_config.pinReverse, 0);
-       
+
         time_sleep(0.2);
 
         hardware_PWM(pi_, motor_config.pinEnable, 0, 0);
@@ -364,7 +364,7 @@ bool DiffDrivePi::Stop(){
 
 // Return motor status
 DiffDrivePi::MotorStatus& DiffDrivePi::getMotorStatus(Motor motor){
-    
+
     // Check if the query is for an invalid motor
     assert(isValidMotor(motor) && "Invalid motor index");
 
@@ -374,7 +374,7 @@ DiffDrivePi::MotorStatus& DiffDrivePi::getMotorStatus(Motor motor){
 
 // Return motor configuration
 DiffDrivePi::MotorConfig DiffDrivePi::getMotorConfig(Motor motor) const{
-   
+
     if (!isValidMotor(motor)){
         // Return default motor_config for an invalid motor
         MotorConfig default_config = {};
@@ -386,7 +386,7 @@ DiffDrivePi::MotorConfig DiffDrivePi::getMotorConfig(Motor motor) const{
 
 // Return true if inquired motor exists, false otherwise
 bool DiffDrivePi::isValidMotor(Motor motor) const{
-    
+
     // Check if inquired motor exists
     size_t index = static_cast<size_t>(motor);
     if (index >= static_cast<size_t>(Motor::TOTAL)){
@@ -397,7 +397,7 @@ bool DiffDrivePi::isValidMotor(Motor motor) const{
 }
 
 bool DiffDrivePi::isValidEncoder(Encoder encoder) const{
-    
+
     // Check if inquired encoder exists
     size_t index = static_cast<size_t>(encoder);
     if (index >= static_cast<size_t>(Encoder::TOTAL)){
@@ -408,7 +408,7 @@ bool DiffDrivePi::isValidEncoder(Encoder encoder) const{
 }
 
 bool DiffDrivePi::isReady(){
-   
+
     if (status_ == SysStatus::READY || status_ == SysStatus::RUNNING){
         return true;
     }
@@ -425,7 +425,7 @@ bool DiffDrivePi::isReady(){
 }
 
 int32_t DiffDrivePi::getEncoderCounts(Encoder encoder){
-   
+
     if(!isValidEncoder(encoder)){
         if(verbose_debug_){
             std::cerr << "DiffDrivPi: Invalid encoder index" << std::endl;
@@ -437,7 +437,7 @@ int32_t DiffDrivePi::getEncoderCounts(Encoder encoder){
 
 
 void DiffDrivePi::resetEncoderCounts(){
-   
+
     for(size_t i = 0; i < static_cast<size_t>(Encoder::TOTAL); i++){
         encoders_state_[i].count.store(0);
         encoders_state_[i].filtered.store(0);
@@ -469,7 +469,7 @@ double DiffDrivePi::getDistance(Encoder encoder){
 }
 
 double DiffDrivePi::getVelocity(Encoder encoder, int32_t previous_counts, std::chrono::duration<double> dt){
-    
+
     if(!isValidEncoder(encoder) || dt.count()<= 0.0){
         return 0.0;
     }
@@ -500,11 +500,11 @@ double DiffDrivePi::getDistanceRad(Encoder encoder){
     // Convert encoder counts to wheel rotations in radians
     double distance = static_cast<double>(counts) * 2.0 * M_PI / static_cast<double>(config_.encoders[static_cast<size_t>(encoder)].cpr);
     return distance;
-}    
+}
 
 
 double DiffDrivePi::getVelocityRad(Encoder encoder, int32_t previous_counts, std::chrono::duration<double> dt){
-    
+
     if(!isValidEncoder(encoder) || dt.count()<= 0.0){
         return 0.0;
     }
@@ -552,13 +552,13 @@ double DiffDrivePi::PIDController(Controller controller, double velocity, double
         corrected_velocity += d_controller(controller_config.kd, error, controller_state.prev_error, dt);
         controller_state.prev_error = error;
     }
-    
+
     return corrected_velocity;
 }
 
 // Private helper functions
 bool DiffDrivePi::initpigpio(){
-    
+
     // Start connection to Pigpiod Daemon
     pi_ = pigpio_start(nullptr, nullptr);
 
@@ -570,7 +570,7 @@ bool DiffDrivePi::initpigpio(){
         pigpio_status_ = false;
         return false;
     }
-    
+
     if(!configureGPIO()){
         if(verbose_debug_){
             std::cerr << "DiffDrivePi: GPIO pin configuration failed!" << std::endl;
@@ -589,7 +589,7 @@ bool DiffDrivePi::initpigpio(){
 }
 
 bool DiffDrivePi::configureGPIO(){
-    
+
     for (size_t i = 0; i < static_cast<size_t>(Motor::TOTAL); i++){
         // Create a const reference to the motor pins defined in Robot Config
         const MotorConfig& motor_config = config_.motors[i];
@@ -611,7 +611,7 @@ bool DiffDrivePi::configureGPIO(){
             return false;
         }
 
-        // Set Hardware PWM      --      
+        // Set Hardware PWM      --
         if(set_mode(pi_, motor_config.pinEnable, PI_OUTPUT) != 0){
             if(verbose_debug_){
                 std::cerr << "DiffDrivePi: Error setting Enable Pin as Output" << std::endl;
@@ -628,8 +628,8 @@ bool DiffDrivePi::configureGPIO(){
             }
             return false;
         }
-        
-        // If all tests pass, GPIO pins are configured                                        
+
+        // If all tests pass, GPIO pins are configured
         motor_status_[i].forward = true;
         motor_status_[i].enabled = false;
         motor_status_[i].last_cmd_vel = 0.0f;
@@ -642,8 +642,8 @@ bool DiffDrivePi::configureGPIO(){
     return true;
 }
 
-bool DiffDrivePi::initializeEncoders(){ 
-    
+bool DiffDrivePi::initializeEncoders(){
+
     resetEncoderCounts();
     for (size_t i = 0; i < static_cast<size_t>(Encoder::TOTAL); i++){
         // Get encoder information
@@ -651,7 +651,7 @@ bool DiffDrivePi::initializeEncoders(){
         const EncoderConfig& encoder_config = config_.encoders[i];
         EncoderState& encoder_state = encoders_state_[i];
 
-        // Initialize encoder state       
+        // Initialize encoder state
         encoder_state.last_state = 0;
         encoder_state.init = false;
         encoder_state.callback_a_id = -1;
@@ -667,7 +667,7 @@ bool DiffDrivePi::initializeEncoders(){
 
         // Get the indices of the encoder channels for callback data structure
         size_t callback_a = i*2;
-        size_t callback_b = i*2 + 1; 
+        size_t callback_b = i*2 + 1;
 
         callback_data_[callback_a] = {this, encoder, true}; // Channel A;
         callback_data_[callback_b] = {this, encoder, false}; // Channel B;
@@ -755,13 +755,13 @@ uint32_t DiffDrivePi::velocityToPWM(float velocity) const{
 
     // Convert to absolute velocity (direction is handled by directional pins logic)
     float abs_vel = std::abs(velocity);
-   
+
     if (abs_vel < 0.05) {  // Deadband Velocity
         return 0;
     }
     // Make sure the velocity is greater than the min velocity
     if (abs_vel > 0.0f && abs_vel < config_.min_velocity) {abs_vel = config_.min_velocity;}
-    
+
     // Apply user defined max velocity
     if (abs_vel > config_.max_velocity) {abs_vel = config_.max_velocity;}
 
@@ -775,7 +775,7 @@ uint32_t DiffDrivePi::velocityToPWM(float velocity) const{
 }
 
 void DiffDrivePi::encoderCallbackWrapper(int pi, unsigned gpio_pin, unsigned level, uint32_t tick, void* userdata){
-   
+
     // Cast userdata back to class data structure
     CallbackData* data = static_cast<CallbackData*>(userdata);
 
