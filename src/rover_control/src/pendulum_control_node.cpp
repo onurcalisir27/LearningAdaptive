@@ -14,7 +14,6 @@ using namespace std::chrono_literals;
 class PendulumControlNode : public rclcpp::Node
 {
     public:
-
         PendulumControlNode() : Node("pendulum_control_node"){
 
             this->declare_parameter("lambda", 0.98);
@@ -23,56 +22,81 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("desired_angle", 0.0);
             this->get_parameter("desired_angle", desired_angle);
 
-            this->declare_parameter("u_bound", 20.0);
-            double input_bound = this->get_parameter("u_bound").as_double();
+            this->declare_parameter("u_bound", 30.0);
+            this->get_parameter("u_bound", input_bound);
 
             this->declare_parameter("update_freq", 20);
-            int update_frequency = this->get_parameter("update_freq").as_int();
+            this->get_parameter("update_freq", freq);
 
-            this->declare_parameter("kp", 0.0);
-            kp = this->get_parameter("kp").as_double();
-
-            this->declare_parameter("ki", 0.0);
-            ki = this->get_parameter("ki").as_double();
-
-            this->declare_parameter("kd", 0.0);
-            kd = this->get_parameter("kd").as_double();
+            // this->declare_parameter("kp", 0.0);
+            // kp = this->get_parameter("kp").as_double();
+            //
+            // this->declare_parameter("ki", 0.0);
+            // ki = this->get_parameter("ki").as_double();
+            //
+            // this->declare_parameter("kd", 0.0);
+            // kd = this->get_parameter("kd").as_double();
 
             int state_history = 2;
             int state_dim = 1;
             int input_history = 2;
             int input_dim = 1;
-            double covariance = 1e6;
+            double covariance = 1e3;
             controller_.init(state_dim, input_dim, state_history, input_history, lambda);
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
-            theta_bound = 30.0;
+            theta_bound = 10.0;
             controller_.set_bounds(theta_bound, input_bound);
-            controller_.set_frequency(update_frequency);
+            controller_.set_frequency(freq);
             controller_.set_covariance(covariance);
 
-            VectorXd Theta_guess(4);
-            Theta_guess << -1.0, 0.5, 0.1, 0.05;
+            MatrixXd Theta_guess(4,1);
+            Theta_guess << -1.0, 1.0, 0.1, 0.1;
+            controller_.set_theta(Theta_guess);
 
             p_inputs = VectorXd::Zero(input_history*input_dim);
             p_states = VectorXd::Zero(state_history*state_dim);
 
-            auto pid_gains = std::make_tuple(kp, ki, kd);
-            controller_.set_pid(pid_gains);
-
+            desired_state = VectorXd::Zero(state_dim);
+            current_state = VectorXd::Zero(state_dim);
+            // auto pid_gains = std::make_tuple(kp, ki, kd);
+            // controller_.set_pid(pid_gains);
             // prev_time_ = std::chrono::high_resolution_clock::now();
+
             param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
+            auto callback_angle= [this](const rclcpp::Parameter &p) {
+              desired_angle = p.as_double();
+            };
+
+           auto callback_lambda = [this](const rclcpp::Parameter &p) {
+              lambda = p.as_double();
+              controller_.update_forgetting_factor(lambda);
+
+            };
+           auto callback_bound = [this](const rclcpp::Parameter &p) {
+              input_bound = p.as_double();
+              controller_.set_bounds(theta_bound, input_bound);
+            };
+
+           auto callback_freq = [this](const rclcpp::Parameter &p) {
+              freq = p.as_int();
+              controller_.set_frequency(freq);
+            };
+
+            angle_handle_ = param_subscriber_->add_parameter_callback("desired_angle", callback_angle);
+            lambda_handle_ = param_subscriber_->add_parameter_callback("lambda",  callback_lambda);
+            bound_handle_ = param_subscriber_->add_parameter_callback("u_bound", callback_bound);
+            freq_handle_ = param_subscriber_->add_parameter_callback("update_freq", callback_freq);
 
             auto sensor_qos = rclcpp::QoS(2).reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-            "/joint_states", 10, std::bind(&PendulumControlNode::read, this, std::placeholders::_1));
+            "/joint_states", sensor_qos, std::bind(&PendulumControlNode::read, this, std::placeholders::_1));
 
-            auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+            // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
             params_pub_ = this->create_publisher<rover_control::msg::Params>("params", 10);
 
-            params_timer_ = this->create_wall_timer(20ms, std::bind(&PendulumControlNode::control, this));
-
+            params_timer_ = this->create_wall_timer(20ms, std::bind(&PendulumControlNode::feedback, this));
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
             counter_ = 0;
         }
@@ -83,41 +107,34 @@ class PendulumControlNode : public rclcpp::Node
 
             double current_angle = wrap(msg->position[0]);
             double current_torque = msg->effort[0];
-            if (counter_ % 4) {
-              RCLCPP_INFO(this->get_logger(), "Current Angle: %f", current_angle);
-            }
             angles.push_back(current_angle);
             torques.push_back(current_torque);
             counter_++;
-           //  if (counter_ > 2) {
-           //    control();
-           // }
+            control();
+
         }
 
         void control(){
-
-            double input=0.0;
-            int step = std::min(angles.size(), torques.size());
-            if (step < 3){
-              input = 0.0;
-              publish_torque(input);
-
-            } else {
-              p_states << angles[step-2], angles[step-3];
-              p_inputs << torques[step-2], torques[step-3];
-
-              double current = angles[step-1];
+            int step = std::min(angles.size(), torques.size())-1;
+            if (step > 2){
+              p_states << angles[step-1], angles[step-2];
+              p_inputs << torques[step-1], torques[step-2];
+              double current = angles[step];
               double desired = M_PI - desired_angle;
 
-              input = controller_.str(desired, current, p_states, p_inputs);
-              auto error = controller_.get_error(desired, current);
-              RCLCPP_INFO(this->get_logger(), "State Error %f, Prediction Error %f, Control Error %f:", error(0), error(1), error(2));
-              publish_torque(input);
+              desired_state << desired;
+              current_state << current;
+
+              RCLCPP_INFO(this->get_logger(), "Desired Angle: %f, Lambda: %f", desired, lambda);
+              auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
+
+              process_errors = controller_.get_error(desired, current);
+
+              publish_torque(input(0));
             }
-
         }
-        void publish_torque(double input){
 
+        void publish_torque(double input){
             auto control_msg = std_msgs::msg::Float64MultiArray();
             control_msg.data = {input};
             torque_pub_->publish(control_msg);
@@ -125,26 +142,26 @@ class PendulumControlNode : public rclcpp::Node
         }
 
         void feedback(){
-
             MatrixXd Theta = controller_.get_theta();
             MatrixXd Cov = controller_.get_covariance();
             auto msg = rover_control::msg::Params();
 
-            msg.estimate.resize(Theta.size());
+            msg.estimate.resize(Theta.cols() * Theta.rows());
             for(int i = 0; i < Theta.size(); ++i) {
                 msg.estimate[i] = Theta(i);
             }
-
             msg.covariance.resize(Cov.rows() * Cov.cols());
             for(int i = 0; i < Cov.rows(); ++i) {
                 for(int j = 0; j < Cov.cols(); ++j) {
                     msg.covariance[i * Cov.cols() + j] = Cov(i, j);
                 }
             }
-
+            msg.error.resize(process_errors.rows()*process_errors.cols());
+            for(int i = 0; i < process_errors.size(); ++i) {
+                msg.error[i] = process_errors(i);
+            }
             params_pub_->publish(msg);
         }
-
 
         double wrap(double x){
           x = fmod(x , 2.00 * M_PI);
@@ -157,26 +174,25 @@ class PendulumControlNode : public rclcpp::Node
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
         rclcpp::Publisher<rover_control::msg::Params>::SharedPtr params_pub_;
         rclcpp::TimerBase::SharedPtr params_timer_;
-        std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
-        std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_;
-        std::chrono::high_resolution_clock::time_point prev_time_;
 
+        std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> lambda_handle_;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> angle_handle_;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> freq_handle_;
+        std::shared_ptr<rclcpp::ParameterCallbackHandle> bound_handle_;
+
+        // std::chrono::high_resolution_clock::time_point prev_time_;
         SelfTuningRegulator controller_;
-        double desired_angle;
+        VectorXd desired_state, current_state;
         VectorXd p_states;
         VectorXd p_inputs;
-
+        VectorXd process_errors;
         std::vector<double> angles;
         std::vector<double> torques;
-
-        std::vector<double> process_errors;
-        double theta_bound;
-        double lambda;
-        int counter_;
-        double kp, kd, ki;
-
+        double theta_bound, input_bound, lambda, desired_angle;
+        int counter_, freq;
+        // double kp, kd, ki;
 };
-
 
 int main(int argc, char * argv[]) {
   rclcpp::init(argc, argv);

@@ -5,11 +5,10 @@
     <atmosphere type="adiabatic"/>
 
     <physics name="dart_physics" default="true" type="dart">
-      <max_step_size>0.01</max_step_size>
+      <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
-      <real_time_update_rate>100</real_time_update_rate>
-      <max_contacts>20</max_contacts>
-
+      <real_time_update_rate>1000</real_time_update_rate>
+      <max_contacts>50</max_contacts>
       <dart>
         <collision_detector>bullet</collision_detector>
         <solver>

@@ -32,6 +32,8 @@ void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_histor
 
     A_ = MatrixXd::Identity(n_, n_*p_);
     B_ = MatrixXd::Identity(n_, m_*r_);
+    B_current = MatrixXd::Identity(n_, m_);
+    B_old = MatrixXd::Identity(n_, m_*(r_ -1));
 
     update_freq_ = 1;
 }
@@ -72,64 +74,47 @@ void SelfTuningRegulator::update_forgetting_factor(double& forgettingfactor){
     lambda_ = forgettingfactor;
 }
 
-VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input, std::chrono::duration<double> dt)
+VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current, VectorXd& outputs, VectorXd& inputs)
 {
     if (step_ < std::max(p_,r_)) {
-      phi_update(current, prev_input);
       std::cout << "Not enough history to solve parameter_estimation, skipping" << std::endl;
       step_++;
-      return pid_controller(desired, current, dt);
+      return VectorXd::Zero(m_);
     }
-
-    phi_ << -p_states_, p_inputs_;
-    if(step_ % update_freq_ == 0){
-        parameter_estimation(current);
-        A_ = Theta_.transpose().block(0, 0, n_, n_*p_);
-        B_ = Theta_.transpose().block(0, n_*p_, n_, m_*r_);
-    }
-
-    phi_update(current, prev_input);
-
-    MatrixXd B_old;
-    if (r_ > 1){
-      B_old = B_.block(0, m_, n_, m_*(r_-1));
-
-    } else {
-      B_old = MatrixXd::Zero(n_, m_*(r_-1));
-    }
-
-    VectorXd gamma = desired + A_ * p_states_ - B_old * p_inputs_.segment(0, m_*(r_-1));
-
+    phi_ << -outputs, inputs;
+    parameter_estimation(current);
+    A_ = Theta_.transpose().block(0, 0, n_, n_*p_);
+    B_ = Theta_.transpose().block(0, n_*p_, n_, m_*r_);
+    // auto B_past = Theta_.transpose().block(0,m_, n_, m_*(r_-1));
+    auto B_past = B_.block(0, m_, n_, m_*(r_-1));
+    VectorXd xn(n_*p_);
+    xn << current, outputs.segment(0, n_*(p_-1));
+    VectorXd gamma = desired + A_ * xn - B_past * inputs.segment(0, m_*(r_-1));
     VectorXd input = step_ahead_control(gamma);
     step_++;
-
     return input;
 }
 
 double SelfTuningRegulator::str(double& desired, double& current, VectorXd& outputs, VectorXd& inputs)
 {
     phi_ << -outputs, inputs;
-
     VectorXd current_state = VectorXd::Ones(n_) * current;
-
     rls(current_state);
-    A_ << Theta_(0), Theta_(1);
 
-    MatrixXd B_old(1,1);
+    A_ << Theta_(0), Theta_(1);
     B_old << Theta_(3);
 
-    MatrixXd B_current(1,1);
-    B_old << Theta_(2);
+    B_current << Theta_(2);
 
     VectorXd xn(n_*p_);
     xn << current, outputs(0);
 
     auto yn = VectorXd::Ones(n_) * desired;
     VectorXd error = yn + A_ * xn - B_old * inputs(0);
-
-    VectorXd control = B_old.inverse() * error;
-
-    return control(0);
+    double control = error(0) / B_current(0);
+    control = std::clamp(control, -u_bound_, u_bound_);
+    step_++;
+    return control;
 }
 
 void SelfTuningRegulator::phi_update(VectorXd& state, VectorXd& input){
@@ -146,17 +131,15 @@ void SelfTuningRegulator::parameter_estimation(VectorXd& current){
     // RLS Update:
     auto phiPphi = phi_.transpose() * ( Cov_ * phi_);
     double denominator = lambda_ + phiPphi;
-    if (std::abs(denominator) < 1e-4) {
-        denominator = std::copysign(1e-4, denominator);
-    }
-
+    // if (std::abs(denominator) < 1e-4) {
+    //     denominator = std::copysign(1e-4, denominator);
+    // }
     K_ = (Cov_ * phi_) / denominator;
 
     Theta_ = Theta_ + K_ * prediction_error.transpose();
-    // Theta_ = Theta_.cwiseMin(theta_bound_).cwiseMax(-theta_bound_);
+    Theta_ = Theta_.cwiseMin(theta_bound_).cwiseMax(-theta_bound_);
 
     covariance_update();
-    // std::cout << "Covariance: \n" << Cov_ << std::endl << std::endl;
 }
 
 void SelfTuningRegulator::rls(VectorXd& current){
@@ -169,7 +152,8 @@ void SelfTuningRegulator::rls(VectorXd& current){
 
     Theta_ = Theta_ + K_ * prediction_error;
 
-    Cov_ = Cov_ - K_ * phi_.transpose() * Cov_ / lambda_;
+    auto temp = MatrixXd::Identity(s_, s_) - K_ * phi_.transpose();
+    Cov_ = temp * Cov_ / lambda_;
 }
 
 
@@ -189,21 +173,16 @@ void SelfTuningRegulator::covariance_update(){
 
 VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
 
-    // MatrixXd B_current = B_.block(0, 0, n_, m_);
-    MatrixXd B_current(1,1);
-    B_current << Theta_(2);
-    // std::cout << "B current:\n " << B_current << std::endl;
     VectorXd input(m_);
-
+    // auto B_current = Theta_.transpose().block(0,0,n_,m_);
+    auto B_current = B_.block(0,0,n_,m_);
     Eigen::JacobiSVD<MatrixXd> B_svd(B_current);
     if(B_svd.rank() < std::min(B_current.cols(), B_current.rows())){
       input = B_svd.solve(error);
     } else{
       input = B_current.inverse() * error;
     }
-
-    // input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
-    // std::cout << "Computed input: \n" << input << std::endl;
+    input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
     return input;
 }
 

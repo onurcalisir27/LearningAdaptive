@@ -62,12 +62,12 @@
 
   <!-- <limit effort="30.0" lower="-3.1415" upper="3.1415" velocity="30.0"/> -->
   <joint name="pendulum_joint" type="continuous">
-    <limit effort="100.0" velocity="100.0"/>
+    <!-- <limit effort="5.0" velocity="5.0"/> -->
     <parent link="column_link"/>
     <child link="pendulum_link"/>
     <origin xyz="-0.107 0.0 0.5" rpy="0 0 0"/>
     <axis xyz="-1 0 0"/>
-    <dynamics damping="1.0" friction="0.5"/>
+    <dynamics damping="0.30" friction="0.01"/>
   </joint>
 
   <link name="pendulum_link">
@@ -113,7 +113,7 @@
             name="gz::sim::systems::JointStatePublisher">
       <joint_name>pendulum_joint</joint_name>
       <topic>joint_states</topic>
-      <update_rate>100</update_rate>
+      <update_rate>1000</update_rate>
     </plugin>
   </gazebo>
 

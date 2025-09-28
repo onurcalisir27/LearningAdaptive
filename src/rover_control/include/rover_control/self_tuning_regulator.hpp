@@ -37,11 +37,8 @@ class SelfTuningRegulator{
 
         VectorXd get_error(const double& desired, const double& current);
 
-        //**
-        // @brief:
-        // @params:
-        //
-        VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& prev_input, std::chrono::duration<double> dt);
+        VectorXd compute_input(VectorXd& desired, VectorXd& current, VectorXd& outputs, VectorXd& inputs);
+
         void set_pid(std::tuple<double,double,double>gains);
         VectorXd pid_controller(VectorXd& desired, VectorXd& current, std::chrono::duration<double> dt);
 
@@ -88,6 +85,8 @@ class SelfTuningRegulator{
         // State-Input Matrix estimate
         MatrixXd A_;
         MatrixXd B_;
+        MatrixXd B_current;
+        MatrixXd B_old;
 
         // Bound parameters and input values to realistic values
         double theta_bound_, u_bound_;
