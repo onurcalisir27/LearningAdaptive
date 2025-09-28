@@ -29,7 +29,7 @@ state_dim = 2;
 input_dim = 2;
 input_history = 1;     
 state_history = 4;      
-covariance = 1e4;
+covariance = 1e6;
 goal_state = [goal_angle; 0.0];
 
 controller = SelfTuningRegulator(state_dim, input_dim, state_history, ...

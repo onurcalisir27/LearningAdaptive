@@ -24,43 +24,56 @@ def generate_launch_description():
         ),
         'use_sim_time': True
     }
-
-    forgetting_factor_arg = DeclareLaunchArgument(
-        'lambda',
-        default_value='0.98',
-        description='Forgetting Factor for Self Tuning Regulator'
-    )
-
-    desired_angle_arg = DeclareLaunchArgument(
-        'desired_angle',
-        default_value='0.0',
-        description='Desired angle for the pendulum to stabilize on'
-    )
-
-    u_bound_arg = DeclareLaunchArgument(
-        'u_bound',
-        default_value='0.0',
-        description='Control Input bound for the controller'
-    )
-
-    parameter_update_arg = DeclareLaunchArgument(
-        'p_update',
-        default_value='20.0',
-        description='System ID Parameter Update Frequency'
-    )
-
-    system_update_arg = DeclareLaunchArgument(
-        's_update',
-        default_value='4.0',
-        description='System Parameters Update Frequency'
-    )
-
-    forgetting_factor = LaunchConfiguration('forgetting_factor')
-    desired_angle = LaunchConfiguration('desired_angle')
-    u_bound = LaunchConfiguration('u_bound')
-    p_update = LaunchConfiguration('p_update')
-    s_update = LaunchConfiguration('s_update')
-
+    # p_controller_arg = DeclareLaunchArgument(
+    #     'kp',
+    #     default_value='0.0',
+    #     description='Proportional Gain'
+    # )
+    #
+    # i_controller_arg = DeclareLaunchArgument(
+    #     'ki',
+    #     default_value='0.0',
+    #     description='Integral Gain'
+    # )
+    #
+    # d_controller_arg = DeclareLaunchArgument(
+    #     'kd',
+    #     default_value='0.0',
+    #     description='Derivative Gain'
+    # )
+    #
+    # forgetting_factor_arg = DeclareLaunchArgument(
+    #     'lambda',
+    #     default_value='0.98',
+    #     description='Forgetting Factor for Self Tuning Regulator'
+    # )
+    #
+    # desired_angle_arg = DeclareLaunchArgument(
+    #     'desired_angle',
+    #     default_value='0.0',
+    #     description='Desired angle for the pendulum to stabilize on'
+    # )
+    #
+    # u_bound_arg = DeclareLaunchArgument(
+    #     'u_bound',
+    #     default_value='30.0',
+    #     description='Control Input bound for the controller'
+    # )
+    #
+    # update_arg = DeclareLaunchArgument(
+    #     'update_freq',
+    #     default_value='1',
+    #     description='System ID Parameter Update Frequency'
+    # )
+    #
+    # lambda_ = LaunchConfiguration('lambda')
+    # desired_angle = LaunchConfiguration('desired_angle')
+    # u_bound = LaunchConfiguration('u_bound')
+    # update_freq = LaunchConfiguration('update_freq')
+    # kp = LaunchConfiguration('kp')
+    # ki = LaunchConfiguration('ki')
+    # kd = LaunchConfiguration('kd')
+    #
     urdf_pub = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -128,26 +141,29 @@ def generate_launch_description():
         output='screen'
     )
 
-    str_node = Node(
-        package='rover_control',
-        executable='pendulum_control_node',
-        output='screen',
-        parameters=[{
-            'forgetting_factor': forgetting_factor,
-            'desired_angle': desired_angle,
-            'u_bound': u_bound,
-            'p_update': p_update,
-            's_update': s_update
-        }]
-    )
-
-    delay_str = TimerAction(
-        period=12.0,
-        actions=[forgetting_factor_arg, desired_angle_arg,
-                 u_bound_arg, parameter_update_arg, system_update_arg,
-                 str_node]
-    )
-
+    # str_node = Node(
+    #     package='rover_control',
+    #     executable='pendulum_control_node',
+    #     output='screen',
+    #     parameters=[{
+    #         'lambda': lambda_,
+    #         'desired_angle': desired_angle,
+    #         'u_bound': u_bound,
+    #         'update_freq': update_freq,
+    #         'kp': kp,
+    #         'ki': ki,
+    #         'kd': kd,
+    #         'use_sim_time': True
+    #     }]
+    # )
+    #
+    # delay_str = TimerAction(
+    #     period=15.0,
+    #     actions=[forgetting_factor_arg, desired_angle_arg,
+    #              u_bound_arg, update_arg, p_controller_arg,
+    #              i_controller_arg, d_controller_arg, str_node]
+    # )
+    #
     ld = LaunchDescription()
     ld.add_action(urdf_pub)
     ld.add_action(simulation)
@@ -155,5 +171,5 @@ def generate_launch_description():
     ld.add_action(delay_controller)
     ld.add_action(delay_joints)
     ld.add_action(bridge)
-    ld.add_action(delay_str)
+    # ld.add_action(delay_str)
     return ld

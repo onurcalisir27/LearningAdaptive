@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="pendulum">
-  <xacro:include filename="$(find rover_control)/description/gazebo.xacro"/>
-
+  <!-- <xacro:include filename="$(find rover_control)/description/gazebo.xacro"/> -->
   <link name="base_link">
     <visual>
       <origin xyz="0 0 0.05" rpy="0 0 0"/>
@@ -61,18 +60,19 @@
     </inertial>
   </link>
 
+  <!-- <limit effort="30.0" lower="-3.1415" upper="3.1415" velocity="30.0"/> -->
   <joint name="pendulum_joint" type="continuous">
-    <!-- <limit effort="30.0" lower="-3.1415" upper="3.1415" velocity="30.0"/> -->
-    <limit effort="10.0" velocity="10.0"/>
+    <!-- <limit effort="5.0" velocity="5.0"/> -->
     <parent link="column_link"/>
     <child link="pendulum_link"/>
-    <origin xyz="-0.1005 0.0 0.5" rpy="0 0 0"/>
-    <axis xyz="1 0 0"/>
+    <origin xyz="-0.107 0.0 0.5" rpy="0 0 0"/>
+    <axis xyz="-1 0 0"/>
+    <dynamics damping="0.30" friction="0.01"/>
   </joint>
 
   <link name="pendulum_link">
     <visual>
-      <origin xyz="0 0 0.25" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.25" rpy="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.5"/>
       </geometry>
@@ -82,17 +82,16 @@
     </visual>
 
     <collision>
-      <origin xyz="0 0 0.25" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.25" rpy="0 0 0"/>
       <geometry>
         <box size="0.01 0.01 0.5"/>
       </geometry>
     </collision>
 
     <inertial>
-<!-- Using an aluminium bar as the pendulum link \rho=2.7 g/cm^3-->
-      <origin xyz="0 0 0.25" rpy="0 0 0"/>
-      <mass value="0.135"/>
-      <inertia ixx="0.003" iyy="0.003" izz="0.0"
+      <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+      <mass value="0.5"/>
+      <inertia ixx="0.04167" iyy="0.04167" izz="0.0001"
                ixy="0.0" ixz="0.0" iyz="0.0"/>
     </inertial>
   </link>
@@ -109,4 +108,19 @@
     </joint>
   </ros2_control>
 
+  <gazebo>
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+      <joint_name>pendulum_joint</joint_name>
+      <topic>joint_states</topic>
+      <update_rate>1000</update_rate>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system"
+            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find rover_control)/config/pendulum_controller.yaml</parameters>
+    </plugin>
+  </gazebo>
 </robot>
