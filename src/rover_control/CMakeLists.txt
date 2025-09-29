@@ -24,8 +24,7 @@ add_library(action_server SHARED
 target_include_directories(action_server PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(action_server
-   PRIVATE "ROVER_CONTROL_BUILDING_DLL")
+
 ament_target_dependencies(action_server
   rover_msgs
   rclcpp
@@ -46,15 +45,13 @@ add_library(action_client SHARED
 target_include_directories(action_client PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
- target_compile_definitions(action_client
-   PRIVATE "ROVER_CONTROL_BUILDING_DLL")
 ament_target_dependencies(action_client
   rover_msgs
   rclcpp
   rclcpp_action
-  rclcpp_components
-)
+  rclcpp_components)
 rclcpp_components_register_node(action_client PLUGIN "rover_action::FibonacciActionClient" EXECUTABLE fibonacci_action_client)
+
 install(TARGETS
   action_client
   ARCHIVE DESTINATION lib

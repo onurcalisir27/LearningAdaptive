@@ -14,7 +14,7 @@
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
   <depend>rclcpp_lifecycle</depend>
-  
+
   <depend>sensor_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
@@ -40,9 +40,8 @@
   <depend>rtabmap_sync</depend>
   <depend>rtabmap_slam</depend>
   <depend>rtabmap_viz</depend>
-  
+
   <depend>robot_localization</depend>
-  <depend>amcl</depend>
   <depend>twist_stamper</depend>
 
   <exec_depend>robot_state_publisher</exec_depend>
