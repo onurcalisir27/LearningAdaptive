@@ -15,19 +15,19 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>action_msgs</depend>
+  <depend>rover_msgs</depend>
 
   <depend>nav2_common</depend>
   <depend>nav2_core</depend>
   <depend>nav2_util</depend>
   <depend>nav2_costmap_2d</depend>
   <depend>nav2_msgs</depend>
+
   <depend>tf2</depend>
   <exec_depend>nav2_bringup</exec_depend>
-
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>action_msgs</depend>
-  <depend>rover_msgs</depend>
 
   <exec_depend>navigation2</exec_depend>
   <exec_depend>slam_toolbox</exec_depend>
@@ -37,16 +37,7 @@
   <exec_depend>rtabmap_viz</exec_depend>
 
   <exec_depend>robot_localization</exec_depend>
-  <exec_depend>amcl</exec_depend>
 
-  <exec_depend>rviz2</exec_depend>
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>joint_state_publisher</exec_depend>
-  <exec_depend>joint_state_publisher_gui</exec_depend>
-  <exec_depend>urdf</exec_depend>
-  <exec_depend>xacro</exec_depend>
-
-  <exec_depend>teleop_twist_keyboard</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
