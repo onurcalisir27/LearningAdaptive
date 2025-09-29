@@ -12,7 +12,6 @@
   <depend>hardware_interface</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
-  <depend>rclpy</depend>
   <depend>rclcpp_lifecycle</depend>
 
   <depend>sensor_msgs</depend>
@@ -20,45 +19,40 @@
   <depend>geometry_msgs</depend>
 
   <depend>camera_info_manager</depend>
-  <depend>depthai</depend>
-  <depend>depthai_bridge</depend>
   <depend>depthai_ros_msgs</depend>
+  <exec_depend>depthai_ros</exec_depend>
 
-  <depend>ros_gz</depend>
+  <depend>robot_localization</depend>
+  <depend>twist_stamper</depend>
+
+  <exec_depend>ros_gz</exec_depend>
   <depend>ros_gz_bridge</depend>
   <depend>ros_gz_image</depend>
   <depend>ros_gz_interfaces</depend>
   <depend>ros_gz_sim</depend>
-  <depend>ros_gz_sim_demos</depend>
   <depend>gz_ros2_control</depend>
 
-  <depend>navigation2</depend>
-  <depend>nav2_bringup</depend>
-
-  <depend>slam_toolbox</depend>
-  <depend>rtabmap_ros</depend>
-  <depend>rtabmap_sync</depend>
-  <depend>rtabmap_slam</depend>
-  <depend>rtabmap_viz</depend>
-
-  <depend>robot_localization</depend>
-  <depend>twist_stamper</depend>
+  <exec_depend>navigation2</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>rtabmap_ros</exec_depend>
+  <exec_depend>rtabmap_sync</exec_depend>
+  <exec_depend>rtabmap_slam</exec_depend>
+  <exec_depend>rtabmap_viz</exec_depend>
 
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>urdf</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>
+
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>ros2_control</exec_depend>
   <exec_depend>ros2_controllers</exec_depend>
   <exec_depend>diff_drive_controller</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
 
-  <exec_depend>rviz2</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
-  <exec_depend>teleop_twist_joy</exec_depend>
-  <exec_depend>joy</exec_depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
