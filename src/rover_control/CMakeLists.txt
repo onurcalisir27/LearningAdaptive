@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
 project(rover_control)
-
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -13,47 +12,26 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(rover_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
 
 include_directories(include)
-
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Params.msg"
-)
-
-rosidl_get_typesupport_target(cpp_typesupport_target
-  ${PROJECT_NAME} rosidl_typesupport_cpp)
-
 add_executable(pendulum_control_node src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
-
 ament_target_dependencies(pendulum_control_node
   rclcpp
-  sensor_msgs)
+  sensor_msgs
+  rover_msgs)
 
+# Inverted Pendulum Control using Adaptive Controllers
 target_include_directories(pendulum_control_node
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(pendulum_control_node Eigen3::Eigen ${cpp_typesupport_target})
+target_link_libraries(pendulum_control_node Eigen3::Eigen)
 
-add_executable(pendulum_node src/pendulum_node.cpp )
-
-ament_target_dependencies(pendulum_node
-  rclcpp
-  sensor_msgs)
-
-target_include_directories(pendulum_node
-  PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(pendulum_node Eigen3::Eigen)
-
-# Include Planner Node
+# A* Planner Node
 add_executable(planner_node src/planner_node.cpp src/astar.cpp)
-
 ament_target_dependencies(planner_node
   rclcpp
   sensor_msgs
@@ -67,7 +45,6 @@ target_include_directories(planner_node
 
 # Include Controller Node
 add_executable(control_node src/control_node.cpp)
-
 ament_target_dependencies(control_node
   rclcpp
   nav_msgs
@@ -88,11 +65,8 @@ install(
 
 install(TARGETS
     pendulum_control_node
-    pendulum_node
     planner_node
     control_node
     DESTINATION lib/${PROJECT_NAME}
 )
-
-
 ament_package()

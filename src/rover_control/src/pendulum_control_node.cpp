@@ -2,7 +2,8 @@
 #include "rover_control/self_tuning_regulator.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "rover_control/msg/params.hpp"
+// #include "rover_msgs/msg/params.hpp"
+#include "rover_msgs/msg/params.hpp"
 #include <tuple>
 #include <cmath>
 #include <memory>
@@ -94,9 +95,9 @@ class PendulumControlNode : public rclcpp::Node
 
             // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
             torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
-            params_pub_ = this->create_publisher<rover_control::msg::Params>("params", 10);
+            // params_pub_ = this->create_publisher<rover_control::msg::Params>("params", 10);
 
-            params_timer_ = this->create_wall_timer(20ms, std::bind(&PendulumControlNode::feedback, this));
+            // params_timer_ = this->create_wall_timer(20ms, std::bind(&PendulumControlNode::feedback, this));
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
             counter_ = 0;
         }
@@ -141,28 +142,28 @@ class PendulumControlNode : public rclcpp::Node
             RCLCPP_INFO(this->get_logger(), "Input Computed: %f", input);
         }
 
-        void feedback(){
-            MatrixXd Theta = controller_.get_theta();
-            MatrixXd Cov = controller_.get_covariance();
-            auto msg = rover_control::msg::Params();
-
-            msg.estimate.resize(Theta.cols() * Theta.rows());
-            for(int i = 0; i < Theta.size(); ++i) {
-                msg.estimate[i] = Theta(i);
-            }
-            msg.covariance.resize(Cov.rows() * Cov.cols());
-            for(int i = 0; i < Cov.rows(); ++i) {
-                for(int j = 0; j < Cov.cols(); ++j) {
-                    msg.covariance[i * Cov.cols() + j] = Cov(i, j);
-                }
-            }
-            msg.error.resize(process_errors.rows()*process_errors.cols());
-            for(int i = 0; i < process_errors.size(); ++i) {
-                msg.error[i] = process_errors(i);
-            }
-            params_pub_->publish(msg);
-        }
-
+        // void feedback(){
+        //     MatrixXd Theta = controller_.get_theta();
+        //     MatrixXd Cov = controller_.get_covariance();
+        //     auto msg = rover_control::msg::Params();
+        //
+        //     msg.estimate.resize(Theta.cols() * Theta.rows());
+        //     for(int i = 0; i < Theta.size(); ++i) {
+        //         msg.estimate[i] = Theta(i);
+        //     }
+        //     msg.covariance.resize(Cov.rows() * Cov.cols());
+        //     for(int i = 0; i < Cov.rows(); ++i) {
+        //         for(int j = 0; j < Cov.cols(); ++j) {
+        //             msg.covariance[i * Cov.cols() + j] = Cov(i, j);
+        //         }
+        //     }
+        //     msg.error.resize(process_errors.rows()*process_errors.cols());
+        //     for(int i = 0; i < process_errors.size(); ++i) {
+        //         msg.error[i] = process_errors(i);
+        //     }
+        //     params_pub_->publish(msg);
+        // }
+        //
         double wrap(double x){
           x = fmod(x , 2.00 * M_PI);
           if (x < 0)
@@ -172,7 +173,7 @@ class PendulumControlNode : public rclcpp::Node
 
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
         rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
-        rclcpp::Publisher<rover_control::msg::Params>::SharedPtr params_pub_;
+        // rclcpp::Publisher<rover_control::msg::Params>::SharedPtr params_pub_;
         rclcpp::TimerBase::SharedPtr params_timer_;
 
         std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
