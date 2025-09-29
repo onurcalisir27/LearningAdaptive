@@ -19,9 +19,6 @@
   <depend>geometry_msgs</depend>
 
   <depend>camera_info_manager</depend>
-  <depend>depthai_ros_msgs</depend>
-  <exec_depend>depthai_ros</exec_depend>
-
   <depend>robot_localization</depend>
   <depend>twist_stamper</depend>
 
