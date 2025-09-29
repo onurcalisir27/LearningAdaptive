@@ -14,20 +14,64 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rover_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-
+find_package(rclcpp_action)
+find_package(rclcpp_components)
 include_directories(include)
+
+# Action Server Example
+add_library(action_server SHARED
+  src/fibonacci_action_server.cpp)
+target_include_directories(action_server PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_definitions(action_server
+   PRIVATE "ROVER_CONTROL_BUILDING_DLL")
+ament_target_dependencies(action_server
+  rover_msgs
+  rclcpp
+  rclcpp_action
+  rclcpp_components)
+rclcpp_components_register_node(action_server PLUGIN "rover_action::FibonacciActionServer" EXECUTABLE fibonacci_action_server)
+
+install(TARGETS
+  action_server
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Action Client Example
+add_library(action_client SHARED
+  src/fibonacci_action_client.cpp)
+target_include_directories(action_client PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ target_compile_definitions(action_client
+   PRIVATE "ROVER_CONTROL_BUILDING_DLL")
+ament_target_dependencies(action_client
+  rover_msgs
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+)
+rclcpp_components_register_node(action_client PLUGIN "rover_action::FibonacciActionClient" EXECUTABLE fibonacci_action_client)
+install(TARGETS
+  action_client
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Inverted Pendulum Control using Adaptive Controllers
 add_executable(pendulum_control_node src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
 ament_target_dependencies(pendulum_control_node
   rclcpp
   sensor_msgs
   rover_msgs)
-
-# Inverted Pendulum Control using Adaptive Controllers
 target_include_directories(pendulum_control_node
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-
 target_link_libraries(pendulum_control_node Eigen3::Eigen)
 
 # A* Planner Node
