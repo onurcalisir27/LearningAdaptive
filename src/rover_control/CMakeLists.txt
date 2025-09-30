@@ -71,6 +71,17 @@ target_include_directories(pendulum_control_node
 )
 target_link_libraries(pendulum_control_node Eigen3::Eigen)
 
+# Inverted Pendulum Control for 2 Links using Adaptive Controllers
+add_executable(two_link_control_node src/two_link_control_node.cpp src/self_tuning_regulator.cpp)
+ament_target_dependencies(two_link_control_node
+  rclcpp
+  sensor_msgs
+  rover_msgs)
+target_include_directories(two_link_control_node
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 # A* Planner Node
 add_executable(planner_node src/planner_node.cpp src/astar.cpp)
 ament_target_dependencies(planner_node
@@ -108,6 +119,7 @@ install(TARGETS
     pendulum_control_node
     planner_node
     control_node
+    two_link_control_node
     DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

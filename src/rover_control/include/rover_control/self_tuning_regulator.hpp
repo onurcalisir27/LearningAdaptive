@@ -88,8 +88,8 @@ class SelfTuningRegulator{
         MatrixXd B_current;
         MatrixXd B_old;
 
-        // Bound parameters and input values to realistic values
-        double theta_bound_, u_bound_;
+        // Bound input values to realistic values
+        double u1_bound_, u2_bound_;
 
         // PID params
         double kp_, kd_, ki_;

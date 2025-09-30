@@ -9,14 +9,31 @@ from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-
+from launch.substitutions import PythonExpression
 def generate_launch_description():
 
     pkg_share = get_package_share_directory('rover_control')
     sim_dir = get_package_share_directory('rover_sim')
-    urdf_file = os.path.join(pkg_share, 'description', 'pendulum_free.urdf.xacro')
     world_file = os.path.join(sim_dir, 'worlds', 'test.sdf')
-    robot_description = Command(['xacro ', urdf_file])
+
+    # pendulum_urdf = Command(['xacro ', os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')])
+    # two_link_urdf = Command(['xacro ', os.path.join(pkg_share, 'description', 'two_link.urdf.xacro')])
+
+    two_link_arg = DeclareLaunchArgument(
+        'two_link',
+        default_value='false',
+        description='Whether the simulation is of the two linked pendulum or \
+        simple one link'
+    )
+
+    robot_description = Command([
+        'xacro ',
+        PythonExpression([
+            "'", os.path.join(pkg_share, 'description', 'two_link.urdf.xacro'),
+            "' if '", LaunchConfiguration('two_link'), "' == 'true' else '",
+            os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro'), "'"
+        ])
+    ])
     params = {
         'robot_description': ParameterValue(
             robot_description,
@@ -92,6 +109,7 @@ def generate_launch_description():
         output='screen'
     )
     ld = LaunchDescription()
+    ld.add_action(two_link_arg)
     ld.add_action(urdf_pub)
     ld.add_action(simulation)
     ld.add_action(robot_spawner)
