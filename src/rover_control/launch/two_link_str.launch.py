@@ -38,7 +38,6 @@ def generate_launch_description():
             'use_sim_time': True
         }]
     )
-
     delay_str = TimerAction(
         period=1.0,
         actions=[forgetting_factor_arg, desired_angle_arg,

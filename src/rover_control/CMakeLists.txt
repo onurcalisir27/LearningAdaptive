@@ -14,8 +14,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rover_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(rclcpp_action)
-find_package(rclcpp_components)
+find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(ros_gz_interfaces REQUIRED)
 include_directories(include)
 
 # Action Server Example
@@ -58,7 +60,14 @@ install(TARGETS
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-
+# Pendulum Service Handler Node
+add_executable(pendulum_service_handle src/pendulum_service_handle.cpp)
+ament_target_dependencies(pendulum_service_handle
+  rclcpp
+  std_srvs
+  ros_gz_interfaces
+  geometry_msgs
+  )
 # Inverted Pendulum Control using Adaptive Controllers
 add_executable(pendulum_control_node src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
 ament_target_dependencies(pendulum_control_node
@@ -120,6 +129,7 @@ install(TARGETS
     planner_node
     control_node
     two_link_control_node
+    pendulum_service_handle
     DESTINATION lib/${PROJECT_NAME}
 )
 ament_package()

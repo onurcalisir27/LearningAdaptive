@@ -153,14 +153,14 @@
       <joint_name>pendulum_joint1</joint_name>
       <joint_name>pendulum_joint2</joint_name>
       <topic>joint_states</topic>
-      <update_rate>1000</update_rate>
+      <update_rate>500</update_rate>
     </plugin>
   </gazebo>
 
   <gazebo>
     <plugin filename="gz_ros2_control-system"
             name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-      <parameters>$(find rover_control)/config/pendulum_controller.yaml</parameters>
+      <parameters>$(find rover_control)/config/two_link_controller.yaml</parameters>
       <ros>
         <parameter name="use_sim_time" type="bool">true</parameter>
       </ros>

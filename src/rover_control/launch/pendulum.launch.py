@@ -16,9 +16,6 @@ def generate_launch_description():
     sim_dir = get_package_share_directory('rover_sim')
     world_file = os.path.join(sim_dir, 'worlds', 'test.sdf')
 
-    # pendulum_urdf = Command(['xacro ', os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro')])
-    # two_link_urdf = Command(['xacro ', os.path.join(pkg_share, 'description', 'two_link.urdf.xacro')])
-
     two_link_arg = DeclareLaunchArgument(
         'two_link',
         default_value='false',
@@ -34,6 +31,7 @@ def generate_launch_description():
             os.path.join(pkg_share, 'description', 'pendulum.urdf.xacro'), "'"
         ])
     ])
+
     params = {
         'robot_description': ParameterValue(
             robot_description,
@@ -67,18 +65,33 @@ def generate_launch_description():
         executable='create',
         arguments=[
             '-topic', '/robot_description',
-            '-name', 'rover_sim',
+            '-name', 'pendulum',
             '-x', '1.5',
             '-y', '1.5',
             '-z', '0.2'
         ],
         output='screen')
 
+    # controller = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=[
+    #         PythonExpression([
+    #             "'two_link' if '",
+    #             LaunchConfiguration('two_link'),
+    #             "' == 'true' else 'pendulum'"
+    #         ]),
+    #         '--controller-manager',
+    #         '/controller_manager'
+    #     ],
+    #     output='screen')
+
     controller = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['pendulum_controller', '--controller-manager', '/controller_manager'],
+        arguments=['pendulum', '--controller-manager', '/controller_manager'],
         output='screen')
+
 
     delay_controller = TimerAction(
         period=3.0,
@@ -92,7 +105,7 @@ def generate_launch_description():
         output='screen')
 
     delay_joints = TimerAction(
-        period=7.0,
+        period=6.0,
         actions=[joints]
     )
 
@@ -102,12 +115,24 @@ def generate_launch_description():
         arguments=[
             # Clock sync
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/world/controller_test/set_pose@ros_gz_interfaces/srv/SetEntityPose",
         ],
         parameters=[{
             'use_sim_time': True
         }],
         output='screen'
     )
+
+    service_handler = Node(
+        package='rover_control',
+        executable='pendulum_service_handle',
+        output='screen',
+        parameters=[{
+            'is_two_link': LaunchConfiguration('two_link')
+            }
+        ]
+    )
+
     ld = LaunchDescription()
     ld.add_action(two_link_arg)
     ld.add_action(urdf_pub)
@@ -116,5 +141,6 @@ def generate_launch_description():
     ld.add_action(delay_controller)
     ld.add_action(delay_joints)
     ld.add_action(bridge)
+    ld.add_action(service_handler)
     return ld
 

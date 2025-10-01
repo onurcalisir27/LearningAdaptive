@@ -18,8 +18,8 @@ namespace adaptive_controller
         const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
         std::string name, const std::shared_ptr<tf2_ros::Buffer> tf,
         const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) {
-            
-            // Populating class variables
+
+
             node_ = parent;
             auto node = node_.lock();
             costmap_ros_ = costmap_ros;
@@ -110,18 +110,18 @@ namespace adaptive_controller
             plugin_name_.c_str(),plugin_name_.c_str());
         global_pub_->on_deactivate();
         error_pub_->on_deactivate();
-        
+
         controller_->reset();
     }
 
     void AdaptiveController::setSpeedLimit(const double & /*speed_limit*/, const bool & /*percantage*/) {
-        
+
     }
-    
+
     /// @brief Use the controller to compute desired velocity commands based on the current pose and velocity of the robot
-    /// @param pose 
-    /// @param velocity 
-    /// @param goal_checker 
+    /// @param pose
+    /// @param velocity
+    /// @param goal_checker
     /// @return the desired velocity command as the /cmd_vel topic
     geometry_msgs::msg::TwistStamped AdaptiveController::computeVelocityCommands(
         const geometry_msgs::msg::PoseStamped & pose,
@@ -134,18 +134,18 @@ namespace adaptive_controller
             Eigen::Quaterniond Q_d(pose_d.pose.orientation.w, pose_d.pose.orientation.x, pose_d.pose.orientation.y, pose_d.pose.orientation.z);
             double yaw_d = Q_d.toRotationMatrix().eulerAngles(0, 1, 2)[2];
             VectorXd desired({reference_plan.poses[0].pose.position.x, reference_plan.poses[0].pose.position.y, yaw_d});
-            
+
             // Current pose (last output measured)
             Eigen::Quaterniond Q_c(pose.pose.orientation.w, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z);
             double yaw_c = Q_c.toRotationMatrix().eulerAngles(0, 1, 2)[2];
             VectorXd current_state({pose.pose.position.x, pose.pose.position.y, yaw_c});
-            
+
             // Current velocity (last input measured)
             VectorXd prev_input({velocity.linear.x, velocity.angular.z});
 
             // Self tuning regulator
             VectorXd control_input = controller_->computeControl(desired, current_state, prev_input);
-            
+
             // Error metrics
             VectorXd error = prev_command_ - current_state;
             prev_command_ = desired;
@@ -162,7 +162,7 @@ namespace adaptive_controller
             cmd_vel.twist.angular.z = control_input(1,0);
             return cmd_vel;
         }
-    
+
     void AdaptiveController::setPlan(const nav_msgs::msg::Path & path) {
         global_pub_->publish(path);
         global_plan_ = path;
@@ -171,14 +171,14 @@ namespace adaptive_controller
     ////////////////////////////////////////////////////////////////////////
     // Navigation Layer Helper Functions
     ////////////////////////////////////////////////////////////////////////
-    
-    /// @brief 
-    /// @tparam Iter 
-    /// @tparam Getter 
-    /// @param begin 
-    /// @param end 
-    /// @param getCompareVal 
-    /// @return 
+
+    /// @brief
+    /// @tparam Iter
+    /// @tparam Getter
+    /// @param begin
+    /// @param end
+    /// @param getCompareVal
+    /// @return
     template<typename Iter, typename Getter>
     Iter min_by(Iter begin, Iter end, Getter getCompareVal)
     {
@@ -197,9 +197,9 @@ namespace adaptive_controller
     return lowest_it;
     }
 
-    /// @brief 
-    /// @param pose 
-    /// @return 
+    /// @brief
+    /// @param pose
+    /// @return
     nav_msgs::msg::Path AdaptiveController::transformGlobalPlan(
     const geometry_msgs::msg::PoseStamped & pose)
     {
@@ -233,7 +233,7 @@ namespace adaptive_controller
 
     // From the closest point, look for the first point that's further then dist_threshold from the
     // robot. These points are definitely outside of the costmap so we won't transform them.
-    
+
     auto transformation_end = std::find_if(
         transformation_begin, end(global_plan_.poses),
         [&](const auto & global_plan_pose) {
@@ -275,12 +275,12 @@ namespace adaptive_controller
     }
 
     /// @brief Used to convert tranforms in the map frame to the robot's own frame
-    /// @param tf 
-    /// @param frame 
-    /// @param in_pose 
-    /// @param out_pose 
-    /// @param transform_tolerance 
-    /// @return 
+    /// @param tf
+    /// @param frame
+    /// @param in_pose
+    /// @param out_pose
+    /// @param transform_tolerance
+    /// @return
     bool AdaptiveController::transformPose(
         const std::shared_ptr<tf2_ros::Buffer> tf,
         const std::string frame,
@@ -337,7 +337,6 @@ namespace adaptive_controller
         }
         return false;
     }
-
 }
 
 PLUGINLIB_EXPORT_CLASS(adaptive_controller::AdaptiveController, nav2_core::Controller)

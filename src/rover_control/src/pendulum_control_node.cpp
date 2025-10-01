@@ -28,20 +28,11 @@ class PendulumControlNode : public rclcpp::Node
             this->declare_parameter("update_freq", 20);
             this->get_parameter("update_freq", freq);
 
-            // this->declare_parameter("kp", 0.0);
-            // kp = this->get_parameter("kp").as_double();
-            //
-            // this->declare_parameter("ki", 0.0);
-            // ki = this->get_parameter("ki").as_double();
-            //
-            // this->declare_parameter("kd", 0.0);
-            // kd = this->get_parameter("kd").as_double();
-
             int state_history = 2;
             int state_dim = 1;
             int input_history = 2;
             int input_dim = 1;
-            double covariance = 1e3;
+            double covariance = 1e4;
             controller_.init(state_dim, input_dim, state_history, input_history, lambda);
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
@@ -93,7 +84,7 @@ class PendulumControlNode : public rclcpp::Node
             "/joint_states", sensor_qos, std::bind(&PendulumControlNode::read, this, std::placeholders::_1));
 
             // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
+            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum/commands", 10);
             params_pub_ = this->create_publisher<rover_msgs::msg::Params>("params", 10);
 
             params_timer_ = this->create_wall_timer(20ms, std::bind(&PendulumControlNode::feedback, this));
@@ -116,21 +107,17 @@ class PendulumControlNode : public rclcpp::Node
 
         void control(){
             int step = std::min(angles.size(), torques.size())-1;
-            if (step > 2){
+            if (step > 4){
               p_states << angles[step-1], angles[step-2];
               p_inputs << torques[step-1], torques[step-2];
               double current = angles[step];
               double desired = M_PI - desired_angle;
 
-              desired_state << desired;
-              current_state << current;
-
               RCLCPP_INFO(this->get_logger(), "Desired Angle: %f, Lambda: %f", desired, lambda);
-              auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
+              auto input = controller_.str(desired, current, p_states, p_inputs);
+              // process_errors = controller_.get_error(desired, current);
 
-              process_errors = controller_.get_error(desired, current);
-
-              publish_torque(input(0));
+              publish_torque(input);
             }
         }
 
@@ -191,7 +178,6 @@ class PendulumControlNode : public rclcpp::Node
         std::vector<double> torques;
         double theta_bound, input_bound, lambda, desired_angle;
         int counter_, freq;
-        // double kp, kd, ki;
 };
 
 int main(int argc, char * argv[]) {

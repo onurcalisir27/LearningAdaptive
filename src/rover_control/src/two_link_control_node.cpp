@@ -7,6 +7,7 @@
 #include <memory>
 #include <Eigen/Dense>
 #include <vector>
+#include <deque>
 using namespace std::chrono_literals;
 
 class TwoLinkControlNode : public rclcpp::Node
@@ -65,12 +66,12 @@ class TwoLinkControlNode : public rclcpp::Node
             bound1_handle_ = param_subscriber_->add_parameter_callback("u1_bound", callback_bound1);
             bound2_handle_ = param_subscriber_->add_parameter_callback("u2_bound", callback_bound2);
 
-            auto sensor_qos = rclcpp::QoS(10).reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+            auto sensor_qos = rclcpp::QoS(2).reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
             joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
             "/joint_states", sensor_qos, std::bind(&TwoLinkControlNode::read, this, std::placeholders::_1));
 
             // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum_controller/commands", 10);
+            torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum/commands", 10);
             params_pub_ = this->create_publisher<rover_msgs::msg::Params>("params", 10);
             params_timer_ = this->create_wall_timer(20ms, std::bind(&TwoLinkControlNode::feedback, this));
             RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
@@ -81,37 +82,55 @@ class TwoLinkControlNode : public rclcpp::Node
 
         void read(const sensor_msgs::msg::JointState::SharedPtr msg){
 
-            // angles = [angle2(t-1), angle1(t-1), angle2(t), angle1(t)]
-            double current_angle1 = wrap(msg->position[0]);
-            double current_angle2 = wrap(msg->position[1]);
+            auto it1 = std::find(msg->name.begin(), msg->name.end(), joint1_name);
+            auto it2 = std::find(msg->name.begin(), msg->name.end(), joint2_name);
+            if (it1 == msg->name.end() || it2 == msg->name.end()) {
+                RCLCPP_WARN(this->get_logger(), "Joint names not found in message!");
+                return;
+            }
+
+            size_t idx1 = std::distance(msg->name.begin(), it1);
+            size_t idx2 = std::distance(msg->name.begin(), it2);
+
+            double current_angle1 = wrap(msg->position[idx1]);
+            double current_angle2 = wrap(msg->position[idx2]);
+            double current_torque1 = msg->effort[idx1];
+            double current_torque2 = msg->effort[idx2];
+
             angles.push_back(current_angle2);
             angles.push_back(current_angle1);
-
-            double current_torque1 = msg->effort[0];
-            double current_torque2 = msg->effort[1];
             torques.push_back(current_torque2);
             torques.push_back(current_torque1);
 
-            counter_++;
+            while (angles.size() > MAX_HISTORY) {
+                angles.pop_front();
+            }
+            while (torques.size() > MAX_HISTORY) {
+                torques.pop_front();
+            }
+
             control();
         }
 
         void control(){
-            int step = std::min(angles.size(), torques.size())-1;
-            if (step > 5){
-              // p_states = [angle1(t-1), angle2(t-1), angle1(t-2), angle2(t-2)]
-              p_states << angles[step-2], angles[step-3], angles[step-4], angles[step-5];
-              p_inputs << torques[step-2], torques[step-3], torques[step-4], torques[step-5];
 
-              double desired = M_PI - desired_angle;
-              desired_state << desired, 0.0;
-
-              current_state << angles[step], angles[step-1];
-              // current_state = [angle1(t), angle2(t)]
-
-              auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
-              publish_torque(input);
+            if (angles.size() < 6 || torques.size() < 6){
+                return;  // Not enough data yet
             }
+            int step = angles.size() - 1;
+            // p_states = [angle1(t-1), angle2(t-1), angle1(t-2), angle2(t-2)]
+            p_states << angles[step-2], angles[step-3], angles[step-4], angles[step-5];
+            p_inputs << torques[step-2], torques[step-3], torques[step-4], torques[step-5];
+
+            double desired = M_PI - desired_angle;
+            desired_state << desired, 0.0;
+
+            current_state << angles[step], angles[step-1];
+            // current_state = [angle1(t), angle2(t)]
+
+            auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
+            publish_torque(input);
+
         }
 
         void publish_torque(VectorXd input){
@@ -170,7 +189,10 @@ class TwoLinkControlNode : public rclcpp::Node
         VectorXd desired_state, current_state;
         VectorXd p_states, p_inputs;
         VectorXd process_errors;
-        std::vector<double> angles, torques;
+        std::deque<double> angles, torques;
+        std::string joint1_name = "pendulum_joint1";
+        std::string joint2_name = "pendulum_joint2";
+        const size_t MAX_HISTORY = 6;
         double input1_bound, input2_bound, lambda, desired_angle;
         int counter_;
 };

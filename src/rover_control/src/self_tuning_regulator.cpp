@@ -110,7 +110,7 @@ double SelfTuningRegulator::str(double& desired, double& current, VectorXd& outp
     auto yn = VectorXd::Ones(n_) * desired;
     VectorXd error = yn + A_ * xn - B_old * inputs(0);
     double control = error(0) / B_current(0);
-    // control = std::clamp(control, -u_bound_, u_bound_);
+    control = std::clamp(control, -u2_bound_, u2_bound_);
     step_++;
     return control;
 }
