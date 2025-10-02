@@ -19,6 +19,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(ros_gz_interfaces REQUIRED)
 include_directories(include)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Action Server Example
 add_library(action_server SHARED
