@@ -3,7 +3,6 @@
 #include "ros_gz_interfaces/srv/set_entity_pose.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-
 class PendulumServiceHandle : public rclcpp::Node
 {
 public:
@@ -21,6 +20,7 @@ public:
             "/world/controller_test/set_pose");
 
         torque_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum/commands", 10);
+
         RCLCPP_INFO(this->get_logger(), "Pendulum reset service ready");
     }
 

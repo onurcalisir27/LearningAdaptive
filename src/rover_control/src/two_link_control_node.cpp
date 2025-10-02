@@ -104,8 +104,10 @@ class TwoLinkControlNode : public rclcpp::Node
 
             while (angles.size() > MAX_HISTORY) {
                 angles.pop_front();
+                angles.pop_front();
             }
             while (torques.size() > MAX_HISTORY) {
+                torques.pop_front();
                 torques.pop_front();
             }
 
@@ -123,7 +125,8 @@ class TwoLinkControlNode : public rclcpp::Node
             p_inputs << torques[step-2], torques[step-3], torques[step-4], torques[step-5];
 
             double desired = M_PI - desired_angle;
-            desired_state << desired, 0.0;
+            double desired2 = M_PI;
+            desired_state << desired, desired2;
 
             current_state << angles[step], angles[step-1];
             // current_state = [angle1(t), angle2(t)]
@@ -146,6 +149,7 @@ class TwoLinkControlNode : public rclcpp::Node
         }
 
         void feedback(){
+
             auto Theta = controller_.get_theta();
             auto Cov = controller_.get_covariance();
             auto msg = rover_msgs::msg::Params();
@@ -192,7 +196,7 @@ class TwoLinkControlNode : public rclcpp::Node
         std::deque<double> angles, torques;
         std::string joint1_name = "pendulum_joint1";
         std::string joint2_name = "pendulum_joint2";
-        const size_t MAX_HISTORY = 6;
+        const size_t MAX_HISTORY = 8;
         double input1_bound, input2_bound, lambda, desired_angle;
         int counter_;
 };

@@ -121,9 +121,9 @@ void SelfTuningRegulator::parameter_estimation(VectorXd& current){
     // RLS Update:
     auto phiPphi = phi_.transpose() * ( Cov_ * phi_);
     double denominator = lambda_ + phiPphi;
-    if (std::abs(denominator) < 1e-6) {
-        denominator = std::copysign(1e-6, denominator);
-    }
+    // if (std::abs(denominator) < 1e-6) {
+    //     denominator = std::copysign(1e-6, denominator);
+    // }
     K_ = (Cov_ * phi_) / denominator;
     Theta_ = Theta_ + K_ * prediction_error.transpose();
     // Theta_ = Theta_.cwiseMin(theta_bound_).cwiseMax(-theta_bound_);
@@ -151,10 +151,10 @@ void SelfTuningRegulator::covariance_update(){
     Cov_ = (IKPhi * Cov_ * IKPhi.transpose()) / lambda_;
     Cov_ = (Cov_ + Cov_.transpose()) / 2.0;
 
-    Eigen::SelfAdjointEigenSolver<MatrixXd> eigendecomp(Cov_);
-    auto eigen_values = eigendecomp.eigenvalues();
-    eigen_values = eigen_values.cwiseMax(1e-10);
-    Cov_ = eigendecomp.eigenvectors()*eigen_values.asDiagonal()*eigendecomp.eigenvectors().inverse();
+    // Eigen::SelfAdjointEigenSolver<MatrixXd> eigendecomp(Cov_);
+    // auto eigen_values = eigendecomp.eigenvalues();
+    // eigen_values = eigen_values.cwiseMax(1e-10);
+    // Cov_ = eigendecomp.eigenvectors()*eigen_values.asDiagonal()*eigendecomp.eigenvectors().inverse();
 }
 
 VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){

@@ -9,13 +9,20 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(action_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(unique_identifier_msgs REQUIRED)
 include_directories(include)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Params.msg"
+  "msg/Trajectory.msg"
   "action/Fibonacci.action"
+  "action/PendulumTrajectory.action"
+  DEPENDENCIES std_msgs unique_identifier_msgs action_msgs
 )
 rosidl_get_typesupport_target(cpp_typesupport_target
   ${PROJECT_NAME} rosidl_typesupport_cpp)
+
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

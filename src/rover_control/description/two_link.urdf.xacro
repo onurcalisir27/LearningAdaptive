@@ -60,12 +60,12 @@
   </link>
 
   <joint name="pendulum_joint1" type="continuous">
-    <!-- <limit effort="5.0" velocity="5.0"/> -->
+    <limit effort="10.0" velocity="5.0"/>
     <parent link="column_link"/>
     <child link="pendulum_link1"/>
     <origin xyz="-0.107 0.0 0.5" rpy="0 0 0"/>
     <axis xyz="-1 0 0"/>
-    <dynamics damping="0.40" friction="0.01"/>
+    <dynamics damping="0.50" friction="0.03"/>
   </joint>
 
   <link name="pendulum_link1">
@@ -94,13 +94,14 @@
     </inertial>
   </link>
 
-  <joint name="pendulum_joint2" type="continuous">
+  <joint name="pendulum_joint2" type="revolute">
     <!-- <limit effort="5.0" velocity="5.0"/> -->
+    <limit effort="10" velocity="5.0" lower="-3.14159" upper="3.14159" />
     <parent link="pendulum_link1"/>
     <child link="pendulum_link2"/>
     <origin xyz="0.0 0.0 -0.50" rpy="0 0 0"/>
     <axis xyz="-1 0 0"/>
-    <dynamics damping="0.50" friction="0.01"/>
+    <dynamics damping="0.50" friction="0.03"/>
   </joint>
 
   <link name="pendulum_link2">
@@ -153,7 +154,7 @@
       <joint_name>pendulum_joint1</joint_name>
       <joint_name>pendulum_joint2</joint_name>
       <topic>joint_states</topic>
-      <update_rate>500</update_rate>
+      <update_rate>1000</update_rate>
     </plugin>
   </gazebo>
 
