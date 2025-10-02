@@ -24,7 +24,6 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 # Action Server Example
 add_library(action_server SHARED
   src/pendulum_action_server.cpp)
-
 target_include_directories(action_server PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -37,7 +36,6 @@ ament_target_dependencies(action_server
   rclcpp_action
   rclcpp_components)
 rclcpp_components_register_node(action_server PLUGIN "pendulum_action::PendulumActionServer" EXECUTABLE pendulum_action_server)
-
 target_link_libraries(action_server Eigen3::Eigen)
 
 # Action Client Example
@@ -55,14 +53,7 @@ ament_target_dependencies(action_client
   rclcpp_components)
 rclcpp_components_register_node(action_client PLUGIN "pendulum_action::PendulumActionClient" EXECUTABLE pendulum_action_client)
 
-install(TARGETS
-  action_server
-  action_client
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
-
+# Action Servers controller
 add_library(controller SHARED
   src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
 target_include_directories(controller PRIVATE
@@ -77,8 +68,16 @@ ament_target_dependencies(controller
   rclcpp_action
   rclcpp_components)
 rclcpp_components_register_node(controller PLUGIN "pendulum_action::PendulumControlNode" EXECUTABLE pendulum_control_node)
-
 target_link_libraries(controller Eigen3::Eigen)
+
+install(TARGETS
+  action_server
+  action_client
+  controller
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 
 ##########################################################################
 ####################### Exectables
