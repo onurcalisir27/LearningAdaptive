@@ -39,6 +39,13 @@ def generate_launch_description():
         default_value='1',
         description='System ID Parameter Update Frequency'
     )
+
+    sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Using Simulation Time (Gazebo Time) for computations'
+    )
+
     lambda_ = LaunchConfiguration('lambda')
     desired_angle = LaunchConfiguration('desired_angle')
     u_bound = LaunchConfiguration('u_bound')
@@ -63,12 +70,20 @@ def generate_launch_description():
         }]
     )
 
+    rviz2 = Node(
+        package='rviz2',
+        executable='rviz2',
+        # arguments=['-d', rviz_config],
+    )
+
     delay_str = TimerAction(
-        period=2.0,
+        period=3.0,
         actions=[forgetting_factor_arg, desired_angle_arg,
                  u_bound_arg, update_arg, p_controller_arg,
                  i_controller_arg, d_controller_arg, str_node]
     )
     ld = LaunchDescription()
     ld.add_action(delay_str)
+    ld.add_action(rviz2)
+    ld.add_action(sim_time_arg)
     return ld
