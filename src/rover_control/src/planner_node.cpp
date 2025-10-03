@@ -7,10 +7,10 @@
 #include <nav_msgs/srv/get_plan.h>
 
 #include <utility>
-#include "rover_control/astar.hpp"
+#include "rover_utils/astar.hpp"
 
 using namespace std::chrono_literals;
-
+using rover_utils::A_star;
 class PlannerNode : public rclcpp::Node {
 
 public:

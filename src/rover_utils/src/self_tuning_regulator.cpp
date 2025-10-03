@@ -1,16 +1,15 @@
-#include "rover_control/self_tuning_regulator.hpp"
+#include "rover_utils/self_tuning_regulator.hpp"
 #include <Eigen/src/Core/Matrix.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include <cmath>
 #include <algorithm>
 
+namespace rover_utils
+{
+
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-
-void printM(MatrixXd M){
-  std::cout << M << std::endl << std::endl;
-}
 
 void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_history, int& input_history, double forgettingfactor)
 {
@@ -210,4 +209,4 @@ VectorXd SelfTuningRegulator::pid_controller(VectorXd& desired, VectorXd& curren
     return input;
 }
 
-
+} // namespace rover_utils

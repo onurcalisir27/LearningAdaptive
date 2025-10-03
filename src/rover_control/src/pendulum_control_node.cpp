@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
-#include "rover_control/self_tuning_regulator.hpp"
+#include "rover_utils/self_tuning_regulator.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/float64.hpp"
@@ -11,6 +11,9 @@
 #include <vector>
 #include <chrono>
 using namespace std::chrono_literals;
+using rover_utils::SelfTuningRegulator;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 namespace pendulum_action
 {

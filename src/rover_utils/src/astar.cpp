@@ -1,8 +1,11 @@
-#include "rover_control/astar.hpp"
+#include "rover_utils/astar.hpp"
 #include <queue>
 #include <set>
 #include <cmath>
 #include <algorithm>
+
+namespace rover_utils
+{
 
 std::optional<std::vector<std::pair<int,int>>> A_star::planPath(const std::vector<std::vector<int>> grid, const std::pair<int,int> start, const std::pair<int,int> goal)
 {
@@ -115,3 +118,5 @@ double A_star::distance(std::pair<int,int> coords, std::pair<int,int> neighbor_c
   auto pair = std::make_pair(neighbor_coords.first - coords.first, neighbor_coords.second - coords.second);
   return cost_map[pair];
 }
+
+} // namespace rover_utils

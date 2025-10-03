@@ -6,6 +6,9 @@
 #include <vector>
 #include <map>
 
+namespace rover_utils
+{
+
 class A_star {
 
 public:
@@ -42,5 +45,7 @@ private:
     {{1,1}, 1.414}, {{1,-1}, 1.414}, {{-1,1}, 1.414}, {{-1,-1}, 1.414}
   };
 };
+
+} // namespace rover_utils
 
 #endif // !A_STAR_HPP

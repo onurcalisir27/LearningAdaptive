@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "rover_control/self_tuning_regulator.hpp"
+#include "rover_utils/self_tuning_regulator.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "rover_msgs/msg/params.hpp"
@@ -8,7 +8,11 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <deque>
+
 using namespace std::chrono_literals;
+using rover_utils::SelfTuningRegulator;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 class TwoLinkControlNode : public rclcpp::Node
 {

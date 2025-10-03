@@ -18,10 +18,13 @@ find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(ros_gz_interfaces REQUIRED)
+find_package(rover_utils REQUIRED)
 include_directories(include)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-# Action Server Example
+##########################################################################
+####################### Libraries ########################################
+# Pendulum Action Server
 add_library(action_server SHARED
   src/pendulum_action_server.cpp)
 target_include_directories(action_server PRIVATE
@@ -30,6 +33,7 @@ target_include_directories(action_server PRIVATE
 
 ament_target_dependencies(action_server
   rover_msgs
+  rover_utils
   rclcpp
   sensor_msgs
   std_msgs
@@ -38,7 +42,7 @@ ament_target_dependencies(action_server
 rclcpp_components_register_node(action_server PLUGIN "pendulum_action::PendulumActionServer" EXECUTABLE pendulum_action_server)
 target_link_libraries(action_server Eigen3::Eigen)
 
-# Action Client Example
+# Pendulum Action Client
 add_library(action_client SHARED
   src/pendulum_action_client.cpp)
 
@@ -53,15 +57,16 @@ ament_target_dependencies(action_client
   rclcpp_components)
 rclcpp_components_register_node(action_client PLUGIN "pendulum_action::PendulumActionClient" EXECUTABLE pendulum_action_client)
 
-# Action Servers controller
+# Pendulum Action Server controller
 add_library(controller SHARED
-  src/pendulum_control_node.cpp src/self_tuning_regulator.cpp)
+  src/pendulum_control_node.cpp)
 target_include_directories(controller PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(controller
   rover_msgs
+  rover_utils
   rclcpp
   sensor_msgs
   std_msgs
@@ -80,7 +85,7 @@ install(TARGETS
 )
 
 ##########################################################################
-####################### Exectables
+####################### Executables ######################################
 # Pendulum Service Handler Node
 add_executable(pendulum_service_handle src/pendulum_service_handle.cpp)
 ament_target_dependencies(pendulum_service_handle
@@ -105,9 +110,10 @@ ament_target_dependencies(pendulum_service_handle
 # target_link_libraries(pendulum_control_node Eigen3::Eigen)
 
 # Inverted Pendulum Control for 2 Links using Adaptive Controllers
-add_executable(two_link_control_node src/two_link_control_node.cpp src/self_tuning_regulator.cpp)
+add_executable(two_link_control_node src/two_link_control_node.cpp)
 ament_target_dependencies(two_link_control_node
   rclcpp
+  rover_utils
   sensor_msgs
   rclcpp_components
   rover_msgs)
@@ -117,12 +123,13 @@ target_include_directories(two_link_control_node
 )
 
 # A* Planner Node
-add_executable(planner_node src/planner_node.cpp src/astar.cpp)
+add_executable(planner_node src/planner_node.cpp)
 ament_target_dependencies(planner_node
   rclcpp
   sensor_msgs
   nav_msgs
   geometry_msgs
+  rover_utils
 )
 target_include_directories(planner_node
   PRIVATE
@@ -151,7 +158,6 @@ install(
 )
 
 install(TARGETS
-    pendulum_control_node
     planner_node
     control_node
     two_link_control_node
