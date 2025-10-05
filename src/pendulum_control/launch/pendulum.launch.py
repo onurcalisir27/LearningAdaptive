@@ -56,7 +56,7 @@ def generate_launch_description():
             ])
         ]),
         launch_arguments={
-            'gz_args': f'-r -s -v1 {world_file}',
+            'gz_args': f'-r -v1 {world_file}',
             'on_exit_shutdown': 'true',
         }.items())
 

@@ -175,7 +175,7 @@ VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
     return input;
 }
 
-VectorXd SelfTuningRegulator::get_error(const double& desired, const double& current){
+std::tuple<VectorXd,VectorXd,VectorXd> SelfTuningRegulator::get_error(const VectorXd& desired, const VectorXd& current){
 
     // Three Types of Errors we can visualize
     // 1. State Error : desired - current
@@ -183,13 +183,11 @@ VectorXd SelfTuningRegulator::get_error(const double& desired, const double& cur
     // 3. Control Error : desired - Theta_.T * phi_
     auto prediction = Theta_.transpose() * phi_;
     auto state_error = desired - current;
-    auto estimation_error = current - prediction(0);
-    auto control_error = desired - prediction(0);
+    auto estimation_error = current - prediction;
+    auto control_error = desired - prediction;
 
-    VectorXd error_vector(3);
-    error_vector << std::abs(state_error), std::abs(estimation_error), std::abs(control_error);
-
-    return error_vector;
+    std::tuple<VectorXd,VectorXd,VectorXd> errors = {state_error, estimation_error, control_error};
+    return errors;
 }
 
 void SelfTuningRegulator::set_pid(std::tuple<double,double,double>gains){

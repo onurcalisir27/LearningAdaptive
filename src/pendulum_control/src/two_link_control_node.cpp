@@ -8,7 +8,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <deque>
-
+#include <unordered_map>
 using namespace std::chrono_literals;
 using rover_utils::SelfTuningRegulator;
 using Eigen::VectorXd;
@@ -25,17 +25,17 @@ public:
     this->declare_parameter("desired_angle", 0.0);
     this->get_parameter("desired_angle", desired_angle);
 
-    this->declare_parameter("u1_bound", 4.0);
+    this->declare_parameter("u1_bound", 6.0);
     this->get_parameter("u1_bound", input1_bound);
 
-    this->declare_parameter("u2_bound", 2.0);
+    this->declare_parameter("u2_bound", 3.0);
     this->get_parameter("u2_bound", input2_bound);
 
     int state_history = 2;
     int state_dim = 2;
     int input_history = 2;
     int input_dim = 2;
-    double covariance = 1e3;
+    double covariance = 1e6;
     controller_.init(state_dim, input_dim, state_history, input_history, lambda);
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
@@ -79,39 +79,43 @@ public:
     params_pub_ = this->create_publisher<rover_msgs::msg::Params>("params", 10);
     params_timer_ = this->create_wall_timer(20ms, std::bind(&TwoLinkControlNode::feedback, this));
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
-    counter_ = 0;
+
+    this->joint_map.insert({this->joint1_name, 0});
+    this->joint_map.insert({this->joint2_name, 1});
   }
 
 private:
 
+  const size_t MAX_HISTORY = 6;
   void read(const sensor_msgs::msg::JointState::SharedPtr msg){
 
-    auto it1 = std::find(msg->name.begin(), msg->name.end(), joint1_name);
-    auto it2 = std::find(msg->name.begin(), msg->name.end(), joint2_name);
-    if (it1 == msg->name.end() || it2 == msg->name.end()) {
-        RCLCPP_WARN(this->get_logger(), "Joint names not found in message!");
+    double angle1, angle2, torque1, torque2;
+    for (auto joint : msg->name){
+      auto it = joint_map.find(joint);
+      if (it->first == joint1_name){
+        angle1 = wrap(msg->position[it->second]);
+        torque1 = msg->effort[it->second];
+      }
+      else if (it->first == joint2_name){
+        angle2 = wrap(msg->position[it->second]);
+        torque2 = msg->effort[it->second];
+      }
+      else {
+        RCLCPP_INFO(this->get_logger(), "Joint Information Not Found");
         return;
+      }
     }
+    angles.push_back(angle2);
+    angles.push_back(angle1);
+    torques.push_back(torque2);
+    torques.push_back(torque1);
 
-    size_t idx1 = std::distance(msg->name.begin(), it1);
-    size_t idx2 = std::distance(msg->name.begin(), it2);
-
-    double current_angle1 = wrap(msg->position[idx1]);
-    double current_angle2 = wrap(msg->position[idx2]);
-    double current_torque1 = msg->effort[idx1];
-    double current_torque2 = msg->effort[idx2];
-
-    angles.push_back(current_angle2);
-    angles.push_back(current_angle1);
-    torques.push_back(current_torque2);
-    torques.push_back(current_torque1);
+    // angles = [angle2(t-2), angle1(t-2), angle2(t-1), angle1(t-1), angle2(t), angle1(t)]
 
     while (angles.size() > MAX_HISTORY) {
         angles.pop_front();
-        angles.pop_front();
     }
     while (torques.size() > MAX_HISTORY) {
-        torques.pop_front();
         torques.pop_front();
     }
 
@@ -121,8 +125,9 @@ private:
   void control(){
 
     if (angles.size() < 6 || torques.size() < 6){
-        return;  // Not enough data yet
+        return;  // Not enough data
     }
+
     int step = angles.size() - 1;
     // p_states = [angle1(t-1), angle2(t-1), angle1(t-2), angle2(t-2)]
     p_states << angles[step-2], angles[step-3], angles[step-4], angles[step-5];
@@ -132,11 +137,12 @@ private:
     double desired2 = M_PI;
     desired_state << desired, desired2;
 
-    current_state << angles[step], angles[step-1];
     // current_state = [angle1(t), angle2(t)]
+    current_state << angles[step], angles[step-1];
 
     auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
     publish_torque(input);
+
 
   }
 
@@ -148,14 +154,15 @@ private:
     }
     auto control_msg = std_msgs::msg::Float64MultiArray();
     control_msg.data = {input(0), input(1)};
+
     torque_pub_->publish(control_msg);
-    RCLCPP_INFO(this->get_logger(), "Input Computed: %f, %f", input(0), input(1));
   }
 
   void feedback(){
 
     auto Theta = controller_.get_theta();
     auto Cov = controller_.get_covariance();
+    auto Error = controller_.get_error(desired_state, current_state);
     auto msg = rover_msgs::msg::Params();
 
     msg.estimate.resize(Theta.cols() * Theta.rows());
@@ -186,7 +193,6 @@ private:
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
   rclcpp::Publisher<rover_msgs::msg::Params>::SharedPtr params_pub_;
   rclcpp::TimerBase::SharedPtr params_timer_;
-
   std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> lambda_handle_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> angle_handle_;
@@ -194,15 +200,20 @@ private:
   std::shared_ptr<rclcpp::ParameterCallbackHandle> bound2_handle_;
 
   SelfTuningRegulator controller_;
+
   VectorXd desired_state, current_state;
+
   VectorXd p_states, p_inputs;
+
   VectorXd process_errors;
+
   std::deque<double> angles, torques;
+
   std::string joint1_name = "pendulum_joint1";
   std::string joint2_name = "pendulum_joint2";
-  const size_t MAX_HISTORY = 8;
+  std::unordered_map<std::string, size_t> joint_map;
+
   double input1_bound, input2_bound, lambda, desired_angle;
-  int counter_;
 };
 
 int main(int argc, char * argv[]) {
