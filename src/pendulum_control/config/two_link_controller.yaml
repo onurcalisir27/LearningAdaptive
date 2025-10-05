@@ -1,0 +1,26 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 1000
+
+    pendulum:
+      type: effort_controllers/JointGroupEffortController
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+pendulum:
+  ros__parameters:
+    joints:
+      - pendulum_joint1
+      - pendulum_joint2
+    command_interfaces:
+      - effort
+      - effort
+    state_interfaces:
+      - position
+      - velocity
+      - effort
+joint_state_broadcaster:
+  ros__parameters:
+    joints:
+      - pendulum_joint1
+      - pendulum_joint2

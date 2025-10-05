@@ -1,0 +1,17 @@
+# PendulumTrajectory Action
+# set a trajectory of desired angles for the inverted pendulum
+
+# Set goal
+float32[] trajectory
+float32 dt
+# Trajectory[] waypoints
+---
+# Set result
+bool success
+string message
+Params final_params
+---
+# Set feedback
+uint32 current_waypoint
+float64[] tracking_error
+Params current_params
