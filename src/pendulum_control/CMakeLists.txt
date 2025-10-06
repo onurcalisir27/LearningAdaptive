@@ -106,7 +106,7 @@ target_include_directories(two_link_control_node
 )
 
 install(
-  DIRECTORY description launch config worlds src rviz
+  DIRECTORY description launch config worlds src
   DESTINATION share/${PROJECT_NAME}
   USE_SOURCE_PERMISSIONS
 )
