@@ -3,7 +3,7 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
-#include "rover_msgs/msg/params.hpp"
+#include "rover_msgs/msg/str_params.hpp"
 #include "rover_msgs/action/pendulum_trajectory.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -21,7 +21,7 @@ class PendulumActionServer : public rclcpp::Node
 {
 public:
   using Trajectory = rover_msgs::action::PendulumTrajectory;
-  using Params = rover_msgs::msg::Params;
+  using Params = rover_msgs::msg::StrParams;
   using GoalHandle = rclcpp_action::ServerGoalHandle<Trajectory>;
   using JointStates = sensor_msgs::msg::JointState;
   using FloatMultiArray = std_msgs::msg::Float64MultiArray;

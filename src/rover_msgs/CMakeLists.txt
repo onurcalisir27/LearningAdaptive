@@ -14,9 +14,8 @@ find_package(unique_identifier_msgs REQUIRED)
 include_directories(include)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Params.msg"
+  "msg/StrParams.msg"
   "msg/Trajectory.msg"
-  "action/Fibonacci.action"
   "action/PendulumTrajectory.action"
   DEPENDENCIES std_msgs unique_identifier_msgs action_msgs
 )

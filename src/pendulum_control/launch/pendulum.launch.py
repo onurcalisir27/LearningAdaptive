@@ -13,8 +13,7 @@ from launch.substitutions import PythonExpression
 def generate_launch_description():
 
     pkg_share = get_package_share_directory('pendulum_control')
-    sim_dir = get_package_share_directory('rover_sim')
-    world_file = os.path.join(sim_dir, 'worlds', 'test.sdf')
+    world_file = os.path.join(pkg_share, 'worlds', 'pendulum_test_world.sdf')
 
     two_link_arg = DeclareLaunchArgument(
         'two_link',
@@ -66,8 +65,8 @@ def generate_launch_description():
         arguments=[
             '-topic', '/robot_description',
             '-name', 'pendulum',
-            '-x', '1.5',
-            '-y', '1.5',
+            '-x', '0.0',
+            '-y', '0.0',
             '-z', '0.2'
         ],
         output='screen')

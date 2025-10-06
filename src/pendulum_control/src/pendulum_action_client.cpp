@@ -2,7 +2,7 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include "rover_msgs/action/pendulum_trajectory.hpp"
-#include "rover_msgs/msg/params.hpp"
+#include "rover_msgs/msg/str_params.hpp"
 
 #include <functional>
 #include <future>
@@ -17,7 +17,7 @@ class PendulumActionClient : public rclcpp::Node
 
 public:
   using Trajectory = rover_msgs::action::PendulumTrajectory;
-  using Params = rover_msgs::msg::Params;
+  using Params = rover_msgs::msg::StrParams;
   using GoalHandle = rclcpp_action::ClientGoalHandle<Trajectory>;
 
   explicit PendulumActionClient(const rclcpp::NodeOptions& options = rclcpp::NodeOptions())

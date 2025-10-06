@@ -31,11 +31,13 @@ public:
   TrajectoryInterpolator() : initialized(false), current_index_(0){}
   ~TrajectoryInterpolator() = default;
   /**
-   * @brief: initialize a trajectory from a list of desired robot pose's, with desired
+   * @brief initialize a trajectory from a list of desired robot pose's, with desired
    * trajectory sampling time.
-   * @params: waypoints: set of desired pose's for the robot's state, dt: requested sampling time
+   * @param waypoints Set of desired pose's for the robot's state
+   * @param dt Desired sampling time for each waypoint
+   * @param starting_time ROS Node's internal clock time when the function is called
    * of the trajectory, starting_time, initial ROS timestamp at trajectory generation
-   * @output: True if passed parameters can be used to create a valid trajectory,
+   * @return True if passed parameters can be used to create a valid trajectory,
    * false otherwise
    */
   bool init_trajectory(const std::vector<State>& waypoints,
@@ -65,9 +67,9 @@ public:
   }
 
   /**
-   * @brief: get desired state at current time from trajectory
-   * @params: current_time, internal clock of the ROS executor
-   * @output: State desired for the controller
+   * @brief Get desired state at current time from trajectory
+   * @param current_time Internal clock of the ROS executor
+   * @return State desired for the controller
    */
   State get_desired(const rclcpp::Time& current_time)
   {
@@ -95,9 +97,9 @@ public:
   }
 
   /**
-   * @brief: query whether the planned trajectory has elapsed at time
-   * @params: current_time, internal clock of the ROS executor
-   * @output: true if trajectory is finished, false otherwise
+   * @brief Query whether the planned trajectory has elapsed at time
+   * @param current_time Internal clock of the ROS executor
+   * @return True if trajectory is finished, false otherwise
    */
   bool is_finished(const rclcpp::Time& current_time) const
   {
@@ -109,23 +111,21 @@ public:
   }
 
   /**
-   * @brief: access the index of the current waypoint in the trajectory
-   * @params: -
-   * @output: return the current index from the buffer
+   * @brief Access the index of the current waypoint in the trajectory
+   * @return The current index from the buffer
    */
   size_t get_current_index() const {return current_index_;}
 
   /**
-   * @brief: Access the total size of the buffer
-   * @params: -
-   * @output: number of waypoints in the buffer
+   * @brief Access the total size of the buffer
+   * @return Number of waypoints in the buffer
    */
   size_t get_buffer_size() const {return buffer_.size();}
 
   /**
-   * @brief: Return the amount of time left for trajectory to be completed
-   * @params: current time of execution
-   * @output: remaining time in seconds
+   * @brief Return the amount of time left for trajectory to be completed
+   * @param current_time Internal clock of the ROS executor
+   * @return Remaining time in seconds
    */
   double get_remaining_time(const rclcpp::Time& current_time) const
   {
@@ -137,9 +137,8 @@ public:
   }
 
   /**
-   * @brief: Access the interpolated waypoints positions for visualization
-   * @params: -
-   * @output: a vector of positions the interpolater calculated
+   * @brief Access the interpolated waypoints positions for visualization
+   * @return Vector of positions the interpolater calculated
    */
   std::vector<State> get_waypoints() const
   {
@@ -159,9 +158,9 @@ private:
   bool initialized;
 
   /**
-   * @brief:
-   * @params:
-   * @output:
+   * @brief
+   * @param
+   * @return
    */
   State linearInterpolate(const Waypoint& w1, const Waypoint& w2, double alpha)
   {
@@ -169,9 +168,8 @@ private:
   }
 
   /**
-   * @brief: Move the buffer index to the next position if not at the end, or the timestamp has elapsed
-   * @params: current_time of the execution
-   * @output: -
+   * @brief Move the buffer index to the next position if not at the end, or the timestamp has elapsed
+   * @param current_time Internal clock of the ROS executor
    */
   void update_index(const rclcpp::Time& current_time)
   {

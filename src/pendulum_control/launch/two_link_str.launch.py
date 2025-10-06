@@ -17,12 +17,12 @@ def generate_launch_description():
     )
     u1_bound_arg = DeclareLaunchArgument(
         'u1_bound',
-        default_value='6.0',
+        default_value='5.0',
         description='Control Bound for Joint 1'
     )
     u2_bound_arg = DeclareLaunchArgument(
         'u2_bound',
-        default_value='3.0',
+        default_value='2.0',
         description='Control Bound For Joint 2'
     )
 

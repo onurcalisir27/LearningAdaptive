@@ -2,13 +2,14 @@
 #include "rover_utils/self_tuning_regulator.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-#include "rover_msgs/msg/params.hpp"
+#include "rover_msgs/msg/str_params.hpp"
 #include <cmath>
 #include <memory>
 #include <Eigen/Dense>
-#include <vector>
 #include <deque>
 #include <unordered_map>
+#include <tuple>
+
 using namespace std::chrono_literals;
 using rover_utils::SelfTuningRegulator;
 using Eigen::VectorXd;
@@ -39,7 +40,9 @@ public:
     controller_.init(state_dim, input_dim, state_history, input_history, lambda);
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
-    controller_.set_bounds(input1_bound, input2_bound);
+    bounds = VectorXd::Zero(input_dim);
+    bounds << input1_bound, input2_bound;
+    controller_.set_bounds(bounds);
     controller_.set_covariance(covariance);
 
     p_inputs = VectorXd::Zero(input_history*input_dim);
@@ -58,11 +61,13 @@ public:
     };
    auto callback_bound1 = [this](const rclcpp::Parameter &p) {
       input1_bound = p.as_double();
-      controller_.set_bounds(input1_bound, input2_bound);
+      bounds << input1_bound, input2_bound;
+      controller_.set_bounds(bounds);
     };
     auto callback_bound2 = [this](const rclcpp::Parameter &p) {
       input2_bound = p.as_double();
-      controller_.set_bounds(input1_bound, input2_bound);
+      bounds << input1_bound, input2_bound;
+      controller_.set_bounds(bounds);
     };
 
     angle_handle_ = param_subscriber_->add_parameter_callback("desired_angle", callback_angle);
@@ -76,7 +81,7 @@ public:
 
     // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
     torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum/commands", 10);
-    params_pub_ = this->create_publisher<rover_msgs::msg::Params>("params", 10);
+    params_pub_ = this->create_publisher<rover_msgs::msg::StrParams>("params", 10);
     params_timer_ = this->create_wall_timer(20ms, std::bind(&TwoLinkControlNode::feedback, this));
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
 
@@ -85,7 +90,6 @@ public:
   }
 
 private:
-
   const size_t MAX_HISTORY = 6;
   void read(const sensor_msgs::msg::JointState::SharedPtr msg){
 
@@ -109,7 +113,6 @@ private:
     angles.push_back(angle1);
     torques.push_back(torque2);
     torques.push_back(torque1);
-
     // angles = [angle2(t-2), angle1(t-2), angle2(t-1), angle1(t-1), angle2(t), angle1(t)]
 
     while (angles.size() > MAX_HISTORY) {
@@ -133,16 +136,12 @@ private:
     p_states << angles[step-2], angles[step-3], angles[step-4], angles[step-5];
     p_inputs << torques[step-2], torques[step-3], torques[step-4], torques[step-5];
 
-    double desired = M_PI - desired_angle;
-    double desired2 = M_PI;
-    desired_state << desired, desired2;
-
+    desired_state << desired_angle, 0.0;
     // current_state = [angle1(t), angle2(t)]
     current_state << angles[step], angles[step-1];
 
     auto input = controller_.compute_input(desired_state, current_state, p_states, p_inputs);
     publish_torque(input);
-
 
   }
 
@@ -160,10 +159,16 @@ private:
 
   void feedback(){
 
-    auto Theta = controller_.get_theta();
+    auto Theta = controller_.get_parameters();
     auto Cov = controller_.get_covariance();
-    auto Error = controller_.get_error(desired_state, current_state);
-    auto msg = rover_msgs::msg::Params();
+    auto Errors = controller_.get_error(desired_state, current_state);
+    //
+    // VectorXd state_error;
+    // VectorXd estimate_error;
+    // VectorXd control_error;
+    // std::tie(state_error, estimate_error, control_error) = Errors;
+    //
+    auto msg = rover_msgs::msg::StrParams();
 
     msg.estimate.resize(Theta.cols() * Theta.rows());
     for(int i = 0; i < Theta.size(); ++i) {
@@ -175,10 +180,7 @@ private:
             msg.covariance[i * Cov.cols() + j] = Cov(i, j);
         }
     }
-    msg.error.resize(process_errors.rows()*process_errors.cols());
-    for(int i = 0; i < process_errors.size(); ++i) {
-        msg.error[i] = process_errors(i);
-    }
+
     params_pub_->publish(msg);
   }
 
@@ -191,7 +193,7 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
-  rclcpp::Publisher<rover_msgs::msg::Params>::SharedPtr params_pub_;
+  rclcpp::Publisher<rover_msgs::msg::StrParams>::SharedPtr params_pub_;
   rclcpp::TimerBase::SharedPtr params_timer_;
   std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> lambda_handle_;
@@ -213,6 +215,7 @@ private:
   std::string joint2_name = "pendulum_joint2";
   std::unordered_map<std::string, size_t> joint_map;
 
+  VectorXd bounds;
   double input1_bound, input2_bound, lambda, desired_angle;
 };
 

@@ -4,7 +4,7 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "rover_msgs/msg/params.hpp"
+#include "rover_msgs/msg/str_params.hpp"
 #include <cmath>
 #include <memory>
 #include <Eigen/Dense>
@@ -20,7 +20,7 @@ namespace pendulum_action
 class PendulumControlNode : public rclcpp::Node
 {
   using Float64 = std_msgs::msg::Float64;
-  using Params = rover_msgs::msg::Params;
+  using Params = rover_msgs::msg::StrParams;
 
 public:
   explicit PendulumControlNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions())
@@ -42,7 +42,8 @@ public:
     controller_.init(state_dim, input_dim, state_history, input_history, lambda);
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator Initialized!");
 
-    controller_.set_bounds(input_bound, input_bound);
+    VectorXd bounds = VectorXd::Ones(input_dim) * input_bound;
+    controller_.set_bounds(bounds);
     controller_.set_covariance(covariance);
 
     MatrixXd Theta_guess(4,1);
@@ -67,7 +68,8 @@ public:
     };
    auto callback_bound = [this](const rclcpp::Parameter &p) {
       input_bound = p.as_double();
-      controller_.set_bounds(input_bound, input_bound);
+      VectorXd bounds = VectorXd::Ones(1) * input_bound;
+      controller_.set_bounds(bounds);
     };
 
     // angle_handle_ = param_subscriber_->add_parameter_callback("desired_angle", callback_angle);
@@ -88,7 +90,7 @@ public:
 
     // auto control_qos = rclcpp::QoS(5).reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
     torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/pendulum/commands", 10);
-    params_pub_ = this->create_publisher<rover_msgs::msg::Params>("/params", 10);
+    params_pub_ = this->create_publisher<Params>("/params", 10);
     params_timer_ = this->create_wall_timer(10ms, std::bind(&PendulumControlNode::feedback, this));
     RCLCPP_INFO(this->get_logger(), "Self Tuning Regulator started!");
   }
@@ -122,11 +124,7 @@ private:
       p_inputs << torques[step-1], torques[step-2];
       double current = angles[step];
 
-      // double desired = M_PI - desired_angle;
-      // RCLCPP_INFO(this->get_logger(), "Desired Angle: %f, Lambda: %f", desired, lambda);
-      //
       auto input = controller_.str(desired_angle, current, p_states, p_inputs);
-      process_errors = controller_.get_error(desired_angle, current);
       publish_torque(input);
     }
   }
@@ -139,9 +137,14 @@ private:
 
   void feedback(){
 
-    MatrixXd Theta = controller_.get_theta();
+    MatrixXd Theta = controller_.get_parameters();
     MatrixXd Cov = controller_.get_covariance();
-    auto msg = rover_msgs::msg::Params();
+
+    auto desired_state = VectorXd::Ones(1) * desired_angle;
+    auto current_state = VectorXd::Ones(1) * angles.back();
+    auto Errors = controller_.get_error(desired_state, current_state);
+
+    auto msg = Params();
 
     msg.estimate.resize(Theta.cols() * Theta.rows());
     for(int i = 0; i < Theta.size(); ++i) {
@@ -153,10 +156,7 @@ private:
             msg.covariance[i * Cov.cols() + j] = Cov(i, j);
         }
     }
-    msg.error.resize(process_errors.rows()*process_errors.cols());
-    for(int i = 0; i < process_errors.size(); ++i) {
-        msg.error[i] = process_errors(i);
-    }
+
     params_pub_->publish(msg);
   }
 
@@ -170,7 +170,7 @@ private:
   rclcpp::Subscription<Float64>::SharedPtr goal_sub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
-  rclcpp::Publisher<rover_msgs::msg::Params>::SharedPtr params_pub_;
+  rclcpp::Publisher<Params>::SharedPtr params_pub_;
   rclcpp::TimerBase::SharedPtr params_timer_;
 
   std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
@@ -192,10 +192,3 @@ private:
 } // pendulum_action
 
 RCLCPP_COMPONENTS_REGISTER_NODE(pendulum_action::PendulumControlNode)
-
-// int main(int argc, char * argv[]) {
-//   rclcpp::init(argc, argv);
-//   rclcpp::spin(std::make_shared<PendulumControlNode>());
-//   rclcpp::shutdown();
-//   return 0;
-// }

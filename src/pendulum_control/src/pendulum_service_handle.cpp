@@ -40,8 +40,8 @@ private:
 
         auto gz_request = std::make_shared<ros_gz_interfaces::srv::SetEntityPose::Request>();
         gz_request->entity.name = "pendulum";
-        gz_request->pose.position.x = 1.5;
-        gz_request->pose.position.y = 1.5;
+        gz_request->pose.position.x = 0.0;
+        gz_request->pose.position.y = 0.0;
         gz_request->pose.position.z = 0.2;
         gz_request->pose.orientation.w = 1.0;
         gz_request->pose.orientation.x = 0.0;

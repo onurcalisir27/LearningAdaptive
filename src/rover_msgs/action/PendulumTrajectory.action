@@ -9,9 +9,9 @@ float32 dt
 # Set result
 bool success
 string message
-Params final_params
+StrParams final_params
 ---
 # Set feedback
 uint32 current_waypoint
 float64[] tracking_error
-Params current_params
+StrParams current_params

@@ -13,7 +13,6 @@ using Eigen::MatrixXd;
 
 void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_history, int& input_history, double forgettingfactor)
 {
-    step_ = 0;
     n_ = state_dim;
     m_ = input_dim;
     p_ = state_history;
@@ -33,12 +32,10 @@ void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_histor
     B_ = MatrixXd::Identity(n_, m_*r_);
     B_current = MatrixXd::Identity(n_, m_);
     B_old = MatrixXd::Identity(n_, m_*(r_ -1));
-    // update_freq_ = 1;
 }
 
 void SelfTuningRegulator::reset()
 {
-    step_ = 0;
     Theta_ = MatrixXd::Ones(s_, n_);
     phi_ = VectorXd::Zero(s_);
 
@@ -52,15 +49,22 @@ void SelfTuningRegulator::reset()
     B_ = MatrixXd::Identity(n_, m_*r_);
 }
 
-void SelfTuningRegulator::set_frequency(int& freq)
+void SelfTuningRegulator::set_bounds(VectorXd& control_bound)
 {
-    update_freq_ = freq;
+  input_bounds = control_bound;
 }
 
-void SelfTuningRegulator::set_bounds(double& control1_bound, double& control2_bound)
+void limit(VectorXd& input, VectorXd& bound)
 {
-    u1_bound_ = control1_bound;
-    u2_bound_ = control2_bound;
+  if (input.size() != bound.size()){
+    std::cerr << "Input and Bound size's don't match" << std::endl;
+    return;
+  }
+  for (uint i=0; i < input.size(); ++i)
+  {
+    input(i) = std::clamp(input(i), -bound(i), bound(i));
+  }
+  return;
 }
 
 void SelfTuningRegulator::set_covariance(double& initial_covariance)
@@ -74,14 +78,7 @@ void SelfTuningRegulator::update_forgetting_factor(double& forgettingfactor){
 
 VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current, VectorXd& outputs, VectorXd& inputs)
 {
-    if (step_ < std::max(p_,r_)) {
-      std::cout << "Not enough history to solve parameter_estimation, skipping" << std::endl;
-      step_++;
-      return VectorXd::Zero(m_);
-    }
-
     phi_ << -outputs, inputs;
-
     parameter_estimation(current);
     A_ = Theta_.transpose().block(0, 0, n_, n_*p_);
     std::cout << "A matrix: \n" << A_ << std::endl;
@@ -92,7 +89,6 @@ VectorXd SelfTuningRegulator::compute_input(VectorXd& desired, VectorXd& current
     xn << current, outputs.segment(0, n_*(p_-1));
     VectorXd gamma = desired + A_ * xn - B_past * inputs.segment(0, m_*(r_-1));
     VectorXd input = step_ahead_control(gamma);
-    step_++;
     return input;
 }
 
@@ -109,8 +105,7 @@ double SelfTuningRegulator::str(double& desired, double& current, VectorXd& outp
     auto yn = VectorXd::Ones(n_) * desired;
     VectorXd error = yn + A_ * xn - B_old * inputs(0);
     double control = error(0) / B_current(0);
-    control = std::clamp(control, -u2_bound_, u2_bound_);
-    step_++;
+    control = std::clamp(control, -input_bounds(0), input_bounds(0));
     return control;
 }
 
@@ -169,9 +164,7 @@ VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
     } else{
       input = B_current.inverse() * error;
     }
-    // input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
-    input(0) = std::clamp(input(0), -u1_bound_, u1_bound_);
-    input(1) = std::clamp(input(1), -u2_bound_, u2_bound_);
+    limit(input, input_bounds);
     return input;
 }
 
@@ -203,7 +196,7 @@ VectorXd SelfTuningRegulator::pid_controller(VectorXd& desired, VectorXd& curren
     double control = kp_ * error(0) + ki_ * integral + kd_ * derivative;
     p_error = error(0);
     VectorXd input = VectorXd::Ones(m_) * control;
-    // input = input.cwiseMin(u_bound_).cwiseMax(-u_bound_);
+    limit(input, input_bounds);
     return input;
 }
 
