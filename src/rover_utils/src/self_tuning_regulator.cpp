@@ -23,9 +23,6 @@ void SelfTuningRegulator::init(int& state_dim, int& input_dim, int& state_histor
     Theta_ = MatrixXd::Random(s_, n_);
     phi_ = VectorXd::Zero(s_);
 
-    // p_states_ = VectorXd::Zero(n_*p_);
-    // p_inputs_ = VectorXd::Zero(m_*r_);
-
     K_ = VectorXd::Zero(s_);
     Cov_ = MatrixXd::Identity(s_, s_) * 1e6;
 

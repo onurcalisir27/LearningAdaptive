@@ -20,25 +20,26 @@ public:
    * @param state_history State order how many steps back in state data should the system know
    * @param input_history Input order, how many steps back in input data should the system know
    * @param forgettingfactor Forgetting Factor of the recursive least squares algorithm
-   */
+  */
   void init(int& state_dim, int& input_dim, int& state_history, int& input_history, double forgettingfactor);
+
   /**
    * @brief Reset all state matrices and RLS estimation to zero, in between runs if needed
    */
-    void reset();
+  void reset();
 
   /**
    * @brief  Pass in a Vector of limits you want to enforce on your control effort. The size of control_bound should
    * match the size of input_dim. Each element in input will be bounded by the corresponding control_bound element
    * @param control_bound Vector containing element wise bounds for control effort limitting
    */
-    void set_bounds(VectorXd& control_bound);
+  void set_bounds(VectorXd& control_bound);
 
   /**
    * @brief Covariance matrix can be initialized  or reset to an identity matrix with initial_covariance in the diagonal
    * @param initial_covariance Value that will be on the identity diagonal
    */
-    void set_covariance(double& initial_covariance);
+  void set_covariance(double& initial_covariance);
 
 
   /**
@@ -167,7 +168,6 @@ private:
   double integral;
 
 }; // class SelfTuningRegulator
-
 } // namespace rover_utils
 
 #endif // SELF_TUNING_REGULATOR_HPP

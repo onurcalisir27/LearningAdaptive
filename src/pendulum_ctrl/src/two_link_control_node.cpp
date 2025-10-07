@@ -22,8 +22,11 @@ public:
     this->declare_parameter("lambda", 0.995);
     this->get_parameter("lambda", lambda);
 
-    this->declare_parameter("desired_angle", 0.0);
-    this->get_parameter("desired_angle", desired_angle);
+    this->declare_parameter("desired1", 0.0);
+    this->get_parameter("desired1", desired_angle1);
+
+    this->declare_parameter("desired2", 0.0);
+    this->get_parameter("desired2", desired_angle2);
 
     this->declare_parameter("u1_bound", 10.0);
     this->get_parameter("u1_bound", input1_bound);
@@ -51,8 +54,11 @@ public:
     current_state = VectorXd::Zero(state_dim);
 
     param_subscriber_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
-    auto callback_angle= [this](const rclcpp::Parameter &p) {
-      desired_angle = p.as_double();
+    auto callback_angle1 = [this](const rclcpp::Parameter &p) {
+      desired_angle1 = p.as_double();
+    };
+    auto callback_angle2 = [this](const rclcpp::Parameter &p) {
+      desired_angle2 = p.as_double();
     };
    auto callback_lambda = [this](const rclcpp::Parameter &p) {
       lambda = p.as_double();
@@ -69,7 +75,8 @@ public:
       controller_.set_bounds(bounds);
     };
 
-    angle_handle_ = param_subscriber_->add_parameter_callback("desired_angle", callback_angle);
+    angle1_handle_ = param_subscriber_->add_parameter_callback("desired1", callback_angle1);
+    angle2_handle_ = param_subscriber_->add_parameter_callback("desired2", callback_angle2);
     lambda_handle_ = param_subscriber_->add_parameter_callback("lambda",  callback_lambda);
     bound1_handle_ = param_subscriber_->add_parameter_callback("u1_bound", callback_bound1);
     bound2_handle_ = param_subscriber_->add_parameter_callback("u2_bound", callback_bound2);
@@ -153,7 +160,7 @@ private:
     p_states << angles[step-2], angles[step-3], angles[step-4], angles[step-5];
     p_inputs << torques[step-2], torques[step-3], torques[step-4], torques[step-5];
 
-    desired_state << desired_angle, 0.0;
+    desired_state << desired_angle1, desired_angle2;
     // current_state = [angle1(t), angle2(t)]
     current_state << angles[step], angles[step-1];
 
@@ -179,11 +186,11 @@ private:
     auto Theta = controller_.get_parameters();
     auto Cov = controller_.get_covariance();
     auto Errors = controller_.get_error(desired_state, current_state);
-    //
-    // VectorXd state_error;
-    // VectorXd estimate_error;
-    // VectorXd control_error;
-    // std::tie(state_error, estimate_error, control_error) = Errors;
+
+    VectorXd state_error(2);
+    VectorXd estimate_error(2);
+    VectorXd control_error(2);
+    std::tie(state_error, estimate_error, control_error) = Errors;
     //
     auto msg = rover_msgs::msg::StrParams();
 
@@ -214,7 +221,8 @@ private:
   rclcpp::TimerBase::SharedPtr params_timer_;
   std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> lambda_handle_;
-  std::shared_ptr<rclcpp::ParameterCallbackHandle> angle_handle_;
+  std::shared_ptr<rclcpp::ParameterCallbackHandle> angle1_handle_;
+  std::shared_ptr<rclcpp::ParameterCallbackHandle> angle2_handle_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> bound1_handle_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> bound2_handle_;
 
@@ -232,7 +240,7 @@ private:
   std::string joint2_name = "pendulum_joint2";
 
   VectorXd bounds;
-  double input1_bound, input2_bound, lambda, desired_angle;
+  double input1_bound, input2_bound, lambda, desired_angle1, desired_angle2;
 };
 
 int main(int argc, char * argv[]) {
