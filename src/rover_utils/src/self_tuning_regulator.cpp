@@ -1,5 +1,6 @@
 #include "rover_utils/self_tuning_regulator.hpp"
 #include <Eigen/src/Core/Matrix.h>
+#include <Eigen/src/Core/util/Constants.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include <cmath>
@@ -115,12 +116,11 @@ void SelfTuningRegulator::parameter_estimation(VectorXd& current){
     // RLS Update:
     auto phiPphi = phi_.transpose() * ( Cov_ * phi_);
     double denominator = lambda_ + phiPphi;
-    // if (std::abs(denominator) < 1e-6) {
-    //     denominator = std::copysign(1e-6, denominator);
-    // }
+    if (std::abs(denominator) < 1e-6) {
+        denominator = std::copysign(1e-6, denominator);
+    }
     K_ = (Cov_ * phi_) / denominator;
     Theta_ = Theta_ + K_ * prediction_error.transpose();
-    // Theta_ = Theta_.cwiseMin(theta_bound_).cwiseMax(-theta_bound_);
     covariance_update();
 }
 
@@ -133,37 +133,33 @@ void SelfTuningRegulator::rls(VectorXd& current){
     K_ = (Cov_ * phi_) / denominator;
 
     Theta_ = Theta_ + K_ * prediction_error;
-
+    Theta_ = Theta_.cwiseMin(10.0).cwiseMax(-10.0);
     auto temp = MatrixXd::Identity(s_, s_) - K_ * phi_.transpose();
     Cov_ = temp * Cov_ / lambda_;
 }
 
 void SelfTuningRegulator::covariance_update(){
 
-    // Cov_ = MatrixXd::Identity(s_, s_) * 1e6;
     MatrixXd IKPhi = MatrixXd::Identity(s_, s_) - K_ * phi_.transpose();
     Cov_ = (IKPhi * Cov_ * IKPhi.transpose()) / lambda_;
     Cov_ = (Cov_ + Cov_.transpose()) / 2.0;
 
-    // Eigen::SelfAdjointEigenSolver<MatrixXd> eigendecomp(Cov_);
-    // auto eigen_values = eigendecomp.eigenvalues();
-    // eigen_values = eigen_values.cwiseMax(1e-10);
-    // Cov_ = eigendecomp.eigenvectors()*eigen_values.asDiagonal()*eigendecomp.eigenvectors().inverse();
+    Eigen::SelfAdjointEigenSolver<MatrixXd> eigendecomp(Cov_);
+    auto eigen_values = eigendecomp.eigenvalues();
+    eigen_values = eigen_values.cwiseMax(1e-6);
+    Cov_ = eigendecomp.eigenvectors()*eigen_values.asDiagonal()*eigendecomp.eigenvectors().inverse();
 }
 
 VectorXd SelfTuningRegulator::step_ahead_control(VectorXd& error){
-
-    VectorXd input(m_);
-    // auto B_current = Theta_.transpose().block(0,0,n_,m_);
     auto B_current = B_.block(0,0,n_,m_);
-    std::cout << "B current: \n" << B_current << std::endl;
-    input = B_current.inverse() * error;
-    Eigen::JacobiSVD<MatrixXd> B_svd(B_current);
-    if(B_svd.rank() < std::min(B_current.cols(), B_current.rows())){
-      input = B_svd.solve(error);
-    } else{
-      input = B_current.inverse() * error;
+    std::cout << "B current matrix: \n" << B_current << std::endl;
+    Eigen::JacobiSVD<MatrixXd> B_svd(B_current, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    double cond = B_svd.singularValues()(0) / B_svd.singularValues()(B_svd.singularValues().size()-1);
+    if (cond > 1e6) {
+        std::cerr << "WARNING: B matrix is poorly conditioned! condition number = " << cond << std::endl;
     }
+    VectorXd input = B_svd.solve(error);
     limit(input, input_bounds);
     return input;
 }
@@ -178,7 +174,6 @@ std::tuple<VectorXd,VectorXd,VectorXd> SelfTuningRegulator::get_error(const Vect
     auto state_error = desired - current;
     auto estimation_error = current - prediction;
     auto control_error = desired - prediction;
-
     std::tuple<VectorXd,VectorXd,VectorXd> errors = {state_error, estimation_error, control_error};
     return errors;
 }
@@ -190,7 +185,7 @@ void SelfTuningRegulator::set_pid(std::tuple<double,double,double>gains){
 VectorXd SelfTuningRegulator::pid_controller(VectorXd& desired, VectorXd& current, std::chrono::duration<double> dt){
 
     auto error = desired - current;
-    std::cout << "Compute Error: \n" << error << std::endl;
+    std::cout << "Computed Error: \n" << error << std::endl;
     integral += error(0) * dt.count();
     double derivative = (error(0) - p_error) / dt.count();
     double control = kp_ * error(0) + ki_ * integral + kd_ * derivative;
